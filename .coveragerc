@@ -1,0 +1,37 @@
+[run]
+branch = True
+omit =
+    
+    medagent/permissions.py
+    
+    
+    medagent/sms.py
+    
+    
+    telemedicine/views.py
+    telemedicine/models.py
+    telemedicine/serializers.py
+    telemedicine/signals.py
+    telemedicine/bitpay.py
+    telemedicine/admin.py
+    certificate/util.py
+    certificate/admin.py
+    certificate/signals.py
+    certificate/views.py
+    doctor_online/admin.py
+    doctor_online/serializers.py
+    doctor_online/views.py
+    down/views.py
+    down/admin.py
+    medogram/wsgi.py
+    medogram/asgi.py
+    manage.py
+    
+
+[report]
+fail_under = 90
+show_missing = True
+skip_covered = True
+
+[html]
+directory = coverage_html_report

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تایید گواهی پزشکی | هلسا - سامانه هوشمند خدمات پزشکی</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="سیستم تایید گواهی پزشکی هلسا - خدمات پزشکی آنلاین و گواهی استراحت">
+    <meta name="keywords" content="تایید گواهی, گواهی پزشکی, هلسا, خدمات پزشکی آنلاین, استراحت پزشکی">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="تایید گواهی پزشکی | هلسا">
+    <meta property="og:description" content="سیستم تایید گواهی پزشکی هلسا - خدمات پزشکی آنلاین">
+    <meta property="og:url" content="https://helssa.ir">
+    <meta property="og:type" content="website">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "MedicalOrganization",
+            "name": "هلسا",
+            "url": "https://helssa.ir",
+            "description": "سامانه هوشمند خدمات پزشکی و تایید گواهی پزشکی"
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary: #059669;
+            --primary-dark: #047857;
+            --primary-light: #34d399;
+            --success: #10b981;
+            --error: #dc2626;
+            --warning: #f59e0b;
+            --surface: #ffffff;
+            --background: #ecfdf5;
+            --text: #1e293b;
+            --shadow: rgba(5, 150, 105, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #ecfdf5, #d1fae5, #a7f3d0, #6ee7b7);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: var(--text);
+            direction: rtl;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23059669" stroke-width="0.3" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(5, 150, 105, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        .particle:nth-child(1) { width: 4px; height: 4px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 6px; height: 6px; left: 20%; animation-delay: 2s; }
+        .particle:nth-child(3) { width: 3px; height: 3px; left: 30%; animation-delay: 4s; }
+        .particle:nth-child(4) { width: 5px; height: 5px; left: 40%; animation-delay: 6s; }
+        .particle:nth-child(5) { width: 4px; height: 4px; left: 50%; animation-delay: 8s; }
+        .particle:nth-child(6) { width: 7px; height: 7px; left: 60%; animation-delay: 10s; }
+        .particle:nth-child(7) { width: 3px; height: 3px; left: 70%; animation-delay: 12s; }
+        .particle:nth-child(8) { width: 5px; height: 5px; left: 80%; animation-delay: 14s; }
+        .particle:nth-child(9) { width: 4px; height: 4px; left: 90%; animation-delay: 16s; }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 32px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            padding: 2.5rem;
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            animation: containerFadeIn 1s ease-out 0.5s forwards;
+            backdrop-filter: blur(20px);
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.05), rgba(167, 243, 208, 0.02));
+            border-radius: 32px 32px 0 0;
+            pointer-events: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 2.5rem;
+            position: relative;
+            padding-bottom: 1rem;
+            text-align: center;
+            z-index: 2;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out 0.8s forwards;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 50%;
+            transform: translateX(50%);
+            width: 0;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            border-radius: 2px;
+            animation: lineExpand 1s ease-out 1.2s forwards;
+        }
+
+        .status-icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 20px;
+            animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .status-valid {
+            color: var(--success);
+        }
+
+        .status-not-downloadable {
+            color: var(--warning);
+        }
+
+        .status-invalid {
+            color: var(--error);
+        }
+
+        .info-row {
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.05), rgba(5, 150, 105, 0.02));
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1.25rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            border-right: 5px solid var(--primary);
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+            opacity: 0;
+            transform: translateX(30px);
+            animation: fieldSlideIn 0.6s ease-out forwards;
+        }
+
+        .info-row:nth-child(1) { animation-delay: 0.1s; }
+        .info-row:nth-child(2) { animation-delay: 0.2s; }
+        .info-row:nth-child(3) { animation-delay: 0.3s; }
+        .info-row:nth-child(4) { animation-delay: 0.4s; }
+        .info-row:nth-child(5) { animation-delay: 0.5s; }
+
+        .info-row::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            border-radius: 16px;
+        }
+
+        .info-row:hover {
+            transform: translateX(-8px) translateY(-2px);
+            border-color: var(--primary-light);
+            box-shadow: 
+                0 10px 25px rgba(5, 150, 105, 0.15),
+                0 0 0 1px rgba(5, 150, 105, 0.1);
+        }
+
+        .info-row:hover::after {
+            opacity: 1;
+        }
+
+        .info-row strong {
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(5, 150, 105, 0.2);
+            color: var(--primary-dark);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease-out 1.5s forwards;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: var(--primary-dark);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(236, 253, 245, 0.9));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: loadingFadeOut 0.8s 1.5s forwards;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(5, 150, 105, 0.2);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .loading-text {
+            color: var(--primary-dark);
+            font-weight: 600;
+            font-size: 1.1rem;
+            animation: loadingTextPulse 1.5s infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes containerFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes lineExpand {
+            to { width: 100px; }
+        }
+
+        @keyframes fieldSlideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes loadingFadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        @keyframes loadingTextPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.5rem;
+                margin: 0.75rem;
+                border-radius: 24px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .info-row {
+                padding: 1.25rem;
+            }
+
+            .header-icon {
+                font-size: 3rem;
+            }
+
+            .status-icon {
+                font-size: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="floating-particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+</div>
+
+<div class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">در حال بارگذاری...</div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <div class="header-icon">
+            <i class="fas fa-file-medical"></i>
+        </div>
+    </div>
+
+    {% if status == "valid" %}
+        <div class="status-icon status-valid">✅</div>
+        <h1 class="status-valid">{{ message }}</h1>
+        <div class="info-row"><strong>نام:</strong> {{ first_name }}</div>
+        <div class="info-row"><strong>نام خانوادگی:</strong> {{ last_name }}</div>
+        <div class="info-row"><strong>کد ملی:</strong> {{ national_code }}</div>
+        <div class="info-row"><strong>مدت استراحت پزشکی:</strong> {{ sick_days }} روز</div>
+        <div class="info-row"><strong>تشخیص پزشک:</strong> {{ sick_name }}</div>
+    {% elif status == "not_downloadable" %}
+        <div class="status-icon status-not-downloadable">⚠️</div>
+        <h1 class="status-not-downloadable">{{ message }}</h1>
+    {% else %}
+        <div class="status-icon status-invalid">❌</div>
+        <h1 class="status-invalid">گواهی نامعتبر</h1>
+        <div class="info-row">این گواهی پزشکی نامعتبر است یا وجود ندارد.</div>
+    {% endif %}
+
+    <div class="footer">
+        <p><a href="https://helssa.ir" target="_blank">helssa.ir</a></p>
+        <p>&copy; 2025 All Rights Reserved</p>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(() => {
+            document.querySelector('.loading-overlay').style.opacity = '0';
+            document.querySelector('.container').style.opacity = '1';
+            setTimeout(() => {
+                document.querySelector('.loading-overlay').style.display = 'none';
+            }, 500);
+        }, 1500);
+    });
+</script>
+</body>
+</html>

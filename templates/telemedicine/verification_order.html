@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" prefix="og: https://ogp.me/ns#">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تایید نسخه | هلسا - سامانه هوشمند خدمات پزشکی</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="سیستم تایید نسخه الکترونیکی هلسا - خدمات پزشکی آنلاین و ویزیت با دکتر">
+    <meta name="keywords" content="تایید نسخه, نسخه الکترونیکی, هلسا, خدمات پزشکی آنلاین, نسخه پزشکی">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="تایید نسخه | هلسا">
+    <meta property="og:description" content="سیستم تایید نسخه الکترونیکی هلسا - خدمات پزشکی آنلاین">
+    <meta property="og:url" content="https://helssa.ir">
+    <meta property="og:type" content="website">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "MedicalOrganization",
+            "name": "هلسا",
+            "url": "https://helssa.ir",
+            "description": "سامانه هوشمند خدمات پزشکی و تایید نسخه الکترونیکی"
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary: #059669;
+            --primary-dark: #047857;
+            --primary-light: #34d399;
+            --success: #10b981;
+            --error: #dc2626;
+            --warning: #f59e0b;
+            --surface: #ffffff;
+            --background: #ecfdf5;
+            --text: #1e293b;
+            --shadow: rgba(5, 150, 105, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #ecfdf5, #d1fae5, #a7f3d0, #6ee7b7);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: var(--text);
+            direction: rtl;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="%23059669" stroke-width="0.3" opacity="0.3"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .floating-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(5, 150, 105, 0.1);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        .particle:nth-child(1) { width: 4px; height: 4px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 6px; height: 6px; left: 20%; animation-delay: 2s; }
+        .particle:nth-child(3) { width: 3px; height: 3px; left: 30%; animation-delay: 4s; }
+        .particle:nth-child(4) { width: 5px; height: 5px; left: 40%; animation-delay: 6s; }
+        .particle:nth-child(5) { width: 4px; height: 4px; left: 50%; animation-delay: 8s; }
+        .particle:nth-child(6) { width: 7px; height: 7px; left: 60%; animation-delay: 10s; }
+        .particle:nth-child(7) { width: 3px; height: 3px; left: 70%; animation-delay: 12s; }
+        .particle:nth-child(8) { width: 5px; height: 5px; left: 80%; animation-delay: 14s; }
+        .particle:nth-child(9) { width: 4px; height: 4px; left: 90%; animation-delay: 16s; }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 32px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.25),
+                0 0 0 1px rgba(255, 255, 255, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            padding: 2.5rem;
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+            animation: containerFadeIn 1s ease-out 0.5s forwards;
+            backdrop-filter: blur(20px);
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.05), rgba(167, 243, 208, 0.02));
+            border-radius: 32px 32px 0 0;
+            pointer-events: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .header-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 2.5rem;
+            position: relative;
+            padding-bottom: 1rem;
+            text-align: center;
+            z-index: 2;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out 0.8s forwards;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 50%;
+            transform: translateX(50%);
+            width: 0;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--primary-dark));
+            border-radius: 2px;
+            animation: lineExpand 1s ease-out 1.2s forwards;
+        }
+
+        .error {
+            color: var(--error);
+            font-weight: bold;
+            padding: 1.5rem;
+            border: 2px solid var(--error);
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(220, 38, 38, 0.05));
+            animation: errorShake 0.6s ease-in-out, errorFadeIn 0.6s ease-out;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .error::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        .error i {
+            font-size: 1.5rem;
+            animation: iconBounce 2s infinite;
+        }
+
+        .field {
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.05), rgba(5, 150, 105, 0.02));
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 1.25rem;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+            opacity: 0;
+            transform: translateX(30px);
+            animation: fieldSlideIn 0.6s ease-out forwards;
+        }
+
+        .field:nth-child(3) { animation-delay: 0.1s; }
+        .field:nth-child(4) { animation-delay: 0.2s; }
+        .field:nth-child(5) { animation-delay: 0.3s; }
+        .field:nth-child(6) { animation-delay: 0.4s; }
+        .field:nth-child(7) { animation-delay: 0.5s; }
+
+        .field::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 4px;
+            height: 0;
+            background: linear-gradient(to bottom, var(--primary), var(--primary-dark));
+            transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0 16px 16px 0;
+        }
+
+        .field::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            border-radius: 16px;
+        }
+
+        .field:hover {
+            transform: translateX(-8px) translateY(-2px);
+            border-color: var(--primary-light);
+            box-shadow: 
+                0 10px 25px rgba(5, 150, 105, 0.15),
+                0 0 0 1px rgba(5, 150, 105, 0.1);
+        }
+
+        .field:hover::before {
+            height: 100%;
+        }
+
+        .field:hover::after {
+            opacity: 1;
+        }
+
+        .field label {
+            font-weight: 600;
+            color: var(--primary-dark);
+            display: block;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .field:hover label {
+            color: var(--primary);
+            transform: translateX(-4px);
+        }
+
+        .field label i {
+            font-size: 1.2rem;
+            color: var(--primary);
+            transition: all 0.3s ease;
+            background: rgba(5, 150, 105, 0.1);
+            padding: 8px;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .field:hover label i {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .field span {
+            display: block;
+            font-size: 1.1rem;
+            padding-right: 3rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .field:hover span {
+            color: var(--primary-dark);
+            transform: translateX(-4px);
+        }
+
+        .confirmation {
+            margin-top: 2.5rem;
+            font-size: 1.25rem;
+            color: var(--success);
+            font-weight: bold;
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+            border-radius: 20px;
+            border: 2px solid var(--success);
+            animation: confirmationPulse 2s infinite, confirmationFadeIn 0.8s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            position: relative;
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .confirmation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shine 3s infinite;
+        }
+
+        .confirmation i {
+            font-size: 2rem;
+            animation: checkBounce 2s infinite;
+            background: var(--success);
+            color: white;
+            border-radius: 50%;
+            padding: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(5, 150, 105, 0.2);
+            color: var(--primary-dark);
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+            opacity: 0;
+            animation: fadeInUp 0.8s ease-out 1.5s forwards;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: var(--primary-dark);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(236, 253, 245, 0.9));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: loadingFadeOut 0.8s 1.5s forwards;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(5, 150, 105, 0.2);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .loading-text {
+            color: var(--primary-dark);
+            font-weight: 600;
+            font-size: 1.1rem;
+            animation: loadingTextPulse 1.5s infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes containerFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes lineExpand {
+            to { width: 100px; }
+        }
+
+        @keyframes fieldSlideIn {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        @keyframes errorFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes iconBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes confirmationPulse {
+            0% { 
+                transform: scale(1); 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+            70% { 
+                transform: scale(1.02); 
+                box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
+            }
+            100% { 
+                transform: scale(1); 
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        @keyframes confirmationFadeIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        @keyframes checkBounce {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.1) rotate(5deg); }
+            75% { transform: scale(0.95) rotate(-5deg); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes loadingFadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        @keyframes loadingTextPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.5rem;
+                margin: 0.75rem;
+                border-radius: 24px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 2rem;
+            }
+
+            .field {
+                padding: 1.25rem;
+            }
+
+            .field span {
+                padding-right: 2.5rem;
+            }
+
+            .confirmation {
+                font-size: 1.1rem;
+                padding: 1.5rem;
+                gap: 0.75rem;
+            }
+
+            .confirmation i {
+                font-size: 1.5rem;
+                width: 40px;
+                height: 40px;
+                padding: 10px;
+            }
+
+            .header-icon {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="floating-particles">
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+</div>
+
+<div class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">در حال بارگذاری...</div>
+</div>
+
+<div class="container">
+    <div class="header">
+        <div class="header-icon">
+            <i class="fas fa-prescription"></i>
+        </div>
+    </div>
+
+    {% if not_found %}
+        <h1>نسخه پیدا نشد</h1>
+        <p class="error">
+            <i class="fas fa-exclamation-circle"></i>
+            هیچ نسخه ای با کد ملی <strong>{{ national_code }}</strong> یافت نشد.
+        </p>
+    {% else %}
+        <h1>تایید نسخه پزشکی</h1>
+        <div class="field">
+            <label><i class="fas fa-user"></i> نام:</label>
+            <span>{{ order.first_name }}</span>
+        </div>
+        <div class="field">
+            <label><i class="fas fa-user-tag"></i> نام خانوادگی:</label>
+            <span>{{ order.last_name }}</span>
+        </div>
+        <div class="field">
+            <label><i class="fas fa-id-card"></i> کد ملی:</label>
+            <span>{{ order.national_code }}</span>
+        </div>
+        <div class="field">
+            <label><i class="fas fa-prescription"></i> شماره نسخه:</label>
+            <span>{{ order.order_number }}</span>
+        </div>
+        <div class="field">
+            <label><i class="fas fa-heartbeat"></i> نام بیماری:</label>
+            <span>{{ order.disease_name }}</span>
+        </div>
+        <div class="confirmation">
+            <i class="fas fa-check-circle"></i>
+            اطلاعات نسخه با موفقیت تایید شد
+        </div>
+    {% endif %}
+
+    <div class="footer">
+        <p><a href="https://helssa.ir" target="_blank">helssa.ir</a></p>
+        <p>&copy; 2025 All Rights Reserved</p>
+    </div>
+</div>
+</body>
+</html>
