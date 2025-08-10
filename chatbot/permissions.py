@@ -7,6 +7,7 @@ Custom permission classes for chatbot.
 """
 
 from rest_framework.permissions import BasePermission
+from django.shortcuts import get_object_or_404
 from sub.models import Subscription
 from django.contrib.auth import get_user_model
 

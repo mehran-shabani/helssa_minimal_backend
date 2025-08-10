@@ -1,12 +1,15 @@
-# medogram/medogram/settings.py
-from pathlib import Path
-import sys
+# medogram/settings.py
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = os.getenv('DEBUG', default=False)
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 # cors --------------------
@@ -157,10 +160,10 @@ DATABASES = {
         "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
 
         # گزینه‌های توصیه‌شده برای MySQL
- #       "OPTIONS": {
- #           "charset": "utf8mb4",
- #           "sql_mode": "STRICT_TRANS_TABLES",
- #       },
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "sql_mode": "STRICT_TRANS_TABLES",
+        },
     }
 }
 

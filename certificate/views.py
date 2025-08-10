@@ -75,4 +75,3 @@ def hamesterview(request):
     template = 'hamester.html'
     return render(request, template)
         
-    

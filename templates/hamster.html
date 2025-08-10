@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hamster Empire - Ultimate Clicker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --primary-color: #ff6b35;
+            --secondary-color: #4ecdc4;
+            --accent-color: #ffe66d;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --shadow: 0 10px 30px rgba(0,0,0,0.2);
+            --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-gradient: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Fredoka', cursive;
+            background: var(--gradient-bg);
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            position: relative;
+        }
+
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+
+        .game-header {
+            background: var(--card-gradient);
+            border-radius: 25px;
+            padding: 20px 40px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .game-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .main-game-area {
+            background: var(--card-gradient);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(15px);
+            border: 3px solid rgba(255, 255, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hamster-container {
+            text-align: center;
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .hamster {
+            font-size: 8rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: inline-block;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3));
+            animation: hamsterIdle 3s ease-in-out infinite;
+        }
+
+        @keyframes hamsterIdle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.05) rotate(2deg); }
+        }
+
+        .hamster:active {
+            transform: scale(0.9) rotate(-5deg);
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4)) brightness(1.2);
+        }
+
+        .hamster::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: -20px;
+            bottom: -20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 230, 109, 0.3), transparent 70%);
+            animation: pulse 2s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--dark-color);
+            font-weight: 500;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .progress-section {
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .combo-fill {
+            background: linear-gradient(90deg, var(--success-color), var(--secondary-color));
+        }
+
+        .timer-fill {
+            background: linear-gradient(90deg, var(--danger-color), var(--warning-color));
+        }
+
+        .level-fill {
+            background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+        }
+
+        .coin {
+            position: absolute;
+            font-weight: 700;
+            font-size: 1.2rem;
+            pointer-events: none;
+            z-index: 1000;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            animation: coinFloat 1.5s ease-out forwards;
+        }
+
+        @keyframes coinFloat {
+            0% { 
+                transform: translateY(0) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-50px) scale(1.2) rotate(180deg);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-120px) scale(0.8) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 999;
+            animation: particleExplosion 0.8s ease-out forwards;
+        }
+
+        @keyframes particleExplosion {
+            0% { 
+                transform: scale(1) translate(0, 0);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(0) translate(var(--tx), var(--ty));
+                opacity: 0;
+            }
+        }
+
+        .level-up {
+            position: absolute;
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--accent-color), var(--success-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: levelUpBounce 2s ease-out forwards;
+            pointer-events: none;
+            z-index: 1001;
+            text-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+
+        @keyframes levelUpBounce {
+            0% { 
+                transform: scale(0) translateY(0);
+                opacity: 1;
+            }
+            30% {
+                transform: scale(1.3) translateY(-20px);
+                opacity: 1;
+            }
+            60% {
+                transform: scale(1) translateY(-40px);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(0.8) translateY(-100px);
+                opacity: 0;
+            }
+        }
+
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-gradient);
+            border-radius: 15px;
+            padding: 15px 20px;
+            box-shadow: var(--shadow);
+            border: 2px solid var(--accent-color);
+            animation: achievementSlide 3s ease-out forwards;
+            z-index: 1002;
+            max-width: 300px;
+        }
+
+        @keyframes achievementSlide {
+            0% { 
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            15%, 85% {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        .streak-indicator {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--warning-color);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .streak-indicator.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-10px);
+        }
+
+        @media (max-width: 768px) {
+            .game-title {
+                font-size: 2rem;
+            }
+            
+            .hamster {
+                font-size: 6rem;
+            }
+            
+            .main-game-area {
+                padding: 25px;
+                margin: 10px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+            }
+        }
+
+        .power-up-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .power-up-btn {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 12px 20px;
+            font-family: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .power-up-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .power-up-btn:active {
+            transform: translateY(0);
+        }
+
+        .power-up-btn.active {
+            background: linear-gradient(135deg, var(--success-color), var(--accent-color));
+            animation: powerUpActive 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes powerUpActive {
+            0% { box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+            100% { box-shadow: 0 5px 25px rgba(46, 204, 113, 0.5); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-animation" id="backgroundAnimation"></div>
+    
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">🐹 HAMSTER EMPIRE 🐹</h1>
+        </div>
+        
+        <div class="main-game-area">
+            <div class="hamster-container">
+                <div class="streak-indicator" id="streakIndicator">🔥 Streak: <span id="streakCount">0</span></div>
+                <div class="hamster" id="hamster">🐹</div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">💰 Empire Value</div>
+                    <div class="stat-value" id="pointCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">⚡ Power Multiplier</div>
+                    <div class="stat-value">×<span id="multiplierValue">1.0</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">🔥 Combo Streak</div>
+                    <div class="stat-value" id="comboCount">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">👑 Empire Level</div>
+                    <div class="stat-value" id="levelCount">1</div>
+                </div>
+            </div>
+            
+            <div class="progress-section">
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>🔥 Combo Power</span>
+                        <span id="comboProgress">0/100</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill combo-fill" id="comboBar"></div>
+                    </div>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>⏰ Empire Timer</span>
+                        <span id="timerText">5.0s</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill timer-fill" id="timerBar"></div>
+                    </div>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-label">
+                        <span>📈 Level Progress</span>
+                        <span id="levelProgress">0/1000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill level-fill" id="levelBar"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="power-up-section">
+                <button class="power-up-btn" id="doublePointsBtn">
+                    💎 Double Points (30s)
+                </button>
+                <button class="power-up-btn" id="rapidFireBtn">
+                    ⚡ Rapid Fire (15s)
+                </button>
+                <button class="power-up-btn" id="goldenHamsterBtn">
+                    🌟 Golden Hamster (10s)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="soundClick" preload="auto">
+        <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tAwAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAABAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//tQwAAAaQAAAANIAAAAAKVUhbHJNVBAUhAKd0///vv//+7/AH5UhYWFhdOwsLm5eJGVhYWFhdOwsLBfPr5sLm5ubCwj7C5uJF7eO5uJGLe3tr5sUh8zrNm//+3g5xJhc3Eje3g5xJ1mzZubm5sIyPsLm4kXt47m4kXb29tfNimh5e3nuJGE6zZs3NzZsLG4f3M3M3M3r4ykfY" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // Game state
+        const gameState = {
+            points: 0,
+            multiplier: 1,
+            combo: 0,
+            level: 1,
+            streak: 0,
+            lastClickTime: 0,
+            powerUps: {
+                doublePoints: { active: false, endTime: 0 },
+                rapidFire: { active: false, endTime: 0 },
+                goldenHamster: { active: false, endTime: 0 }
+            }
+        };
+
+        // DOM elements
+        const elements = {
+            hamster: document.getElementById('hamster'),
+            pointCount: document.getElementById('pointCount'),
+            multiplierValue: document.getElementById('multiplierValue'),
+            comboCount: document.getElementById('comboCount'),
+            levelCount: document.getElementById('levelCount'),
+            comboBar: document.getElementById('comboBar'),
+            comboProgress: document.getElementById('comboProgress'),
+            timerBar: document.getElementById('timerBar'),
+            timerText: document.getElementById('timerText'),
+            levelBar: document.getElementById('levelBar'),
+            levelProgress: document.getElementById('levelProgress'),
+            streakIndicator: document.getElementById('streakIndicator'),
+            streakCount: document.getElementById('streakCount'),
+            soundClick: document.getElementById('soundClick'),
+            backgroundAnimation: document.getElementById('backgroundAnimation'),
+            doublePointsBtn: document.getElementById('doublePointsBtn'),
+            rapidFireBtn: document.getElementById('rapidFireBtn'),
+            goldenHamsterBtn: document.getElementById('goldenHamsterBtn')
+        };
+
+        // Constants
+        const COMBO_TIME_WINDOW = 1000;
+        const RESET_TIME = 5000;
+        const ACHIEVEMENTS = [
+            { points: 1000, title: "First Milestone!", message: "You've earned 1,000 points!" },
+            { points: 10000, title: "Hamster Tycoon!", message: "10,000 points achieved!" },
+            { points: 100000, title: "Empire Builder!", message: "100,000 points - You're unstoppable!" }
+        ];
+
+        let resetTimer;
+        let animationFrameId;
+
+        // Coin types with enhanced properties
+        const coinTypes = [
+            { 
+                class: 'coin-bronze', 
+                emoji: '🥉', 
+                value: 1, 
+                probability: 0.5, 
+                color: '#cd7f32',
+                rarity: 'Common'
+            },
+            { 
+                class: 'coin-silver', 
+                emoji: '🥈', 
+                value: 5, 
+                probability: 0.3, 
+                color: '#c0c0c0',
+                rarity: 'Rare'
+            },
+            { 
+                class: 'coin-gold', 
+                emoji: '🥇', 
+                value: 10, 
+                probability: 0.15, 
+                color: '#ffd700',
+                rarity: 'Epic'
+            },
+            { 
+                class: 'coin-diamond', 
+                emoji: '💎', 
+                value: 50, 
+                probability: 0.04, 
+                color: '#b9f2ff',
+                rarity: 'Legendary'
+            },
+            { 
+                class: 'coin-rainbow', 
+                emoji: '🌈', 
+                value: 100, 
+                probability: 0.01, 
+                color: '#ff69b4',
+                rarity: 'Mythic'
+            }
+        ];
+
+        // Initialize background animation
+        function createBackgroundShapes() {
+            const container = elements.backgroundAnimation;
+            for (let i = 0; i < 20; i++) {
+                const shape = document.createElement('div');
+                shape.className = 'floating-shape';
+                shape.style.width = Math.random() * 100 + 50 + 'px';
+                shape.style.height = shape.style.width;
+                shape.style.left = Math.random() * 100 + '%';
+                shape.style.top = Math.random() * 100 + '%';
+                shape.style.animationDelay = Math.random() * 6 + 's';
+                shape.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                container.appendChild(shape);
+            }
+        }
+
+        // Enhanced coin type selection
+        function getRandomCoinType() {
+            const rand = Math.random();
+            let cumulativeProbability = 0;
+            
+            for (const coinType of coinTypes) {
+                cumulativeProbability += coinType.probability;
+                if (rand < cumulativeProbability) {
+                    return coinType;
+                }
+            }
+            return coinTypes[0];
+        }
+
+        // Enhanced particle system
+        function createParticle(x, y, color, size = 6) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            particle.style.backgroundColor = color;
+            particle.style.setProperty('--tx', (Math.random() - 0.5) * 200 + 'px');
+            particle.style.setProperty('--ty', (Math.random() - 0.5) * 200 + 'px');
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 800);
+        }
+
+        function createParticleBurst(x, y, coinType) {
+            const particleCount = coinType.rarity === 'Mythic' ? 50 : 
+                                 coinType.rarity === 'Legendary' ? 30 : 
+                                 coinType.rarity === 'Epic' ? 20 : 15;
+            
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const size = Math.random() * 8 + 4;
+                    createParticle(x, y, coinType.color, size);
+                }, i * 10);
+            }
+        }
+
+        // Enhanced combo system
+        function updateCombo() {
+            const currentTime = Date.now();
+            
+            if (currentTime - gameState.lastClickTime < COMBO_TIME_WINDOW) {
+                gameState.combo += 1;
+                gameState.streak += 1;
+            } else {
+                gameState.combo = 1;
+                gameState.streak = 1;
+            }
+            
+            gameState.lastClickTime = currentTime;
+            updateUI();
+            updateMultiplier();
+            updateStreakIndicator();
+        }
+
+        function updateMultiplier() {
+            let baseMultiplier = 1 + (gameState.combo * 0.1);
+            
+            // Power-up bonuses
+            if (gameState.powerUps.doublePoints.active) baseMultiplier *= 2;
+            if (gameState.powerUps.rapidFire.active) baseMultiplier *= 1.5;
+            if (gameState.powerUps.goldenHamster.active) baseMultiplier *= 5;
+            
+            gameState.multiplier = baseMultiplier;
+        }
+
+        function updateStreakIndicator() {
+            if (gameState.streak >= 10) {
+                elements.streakIndicator.classList.add('show');
+                elements.streakCount.textContent = gameState.streak;
+            } else {
+                elements.streakIndicator.classList.remove('show');
+            }
+        }
+
+        // Level system
+        function checkLevelUp() {
+            const pointsForNextLevel = Math.floor(1000 * Math.pow(1.5, gameState.level - 1));
+            if (gameState.points >= pointsForNextLevel) {
+                gameState.level++;
+                showLevelUpAnimation();
+                checkAchievements();
+            }
+        }
+
+        function showLevelUpAnimation() {
+            const levelUp = document.createElement('div');
+            levelUp.className = 'level-up';
+            levelUp.textContent = `🎉 LEVEL ${gameState.level}! 🎉`;
+            levelUp.style.left = '50%';
+            levelUp.style.top = '30%';
+            levelUp.style.transform = 'translateX(-50%)';
+            document.body.appendChild(levelUp);
+            setTimeout(() => levelUp.remove(), 2000);
+        }
+
+        // Achievement system
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(achievement => {
+                if (gameState.points >= achievement.points && 
+                    !localStorage.getItem(`achievement_${achievement.points}`)) {
+                    showAchievement(achievement);
+                    localStorage.setItem(`achievement_${achievement.points}`, 'true');
+                }
+            });
+        }
+
+        function showAchievement(achievement) {
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <div style="font-weight: 700; color: var(--primary-color); margin-bottom: 5px;">
+                    🏆 ${achievement.title}
+                </div>
+                <div style="color: var(--dark-color); font-size: 0.9rem;">
+                    ${achievement.message}
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        // Power-up functions
+        function activateDoublePoints() {
+            if (gameState.powerUps.doublePoints.active) return;
+            
+            gameState.powerUps.doublePoints.active = true;
+            gameState.powerUps.doublePoints.endTime = Date.now() + 30000;
+            
+            elements.doublePointsBtn.classList.add('active');
+            elements.doublePointsBtn.textContent = '💎 Active!';
+            
+            setTimeout(() => {
+                gameState.powerUps.doublePoints.active = false;
+                elements.doublePointsBtn.classList.remove('active');
+                elements.doublePointsBtn.textContent = '💎 Double Points (30s)';
+            }, 30000);
+        }
+
+        function activateRapidFire() {
+            if (gameState.powerUps.rapidFire.active) return;
+            
+            gameState.powerUps.rapidFire.active = true;
+            gameState.powerUps.rapidFire.endTime = Date.now() + 15000;
+            
+            elements.rapidFireBtn.classList.add('active');
+            elements.rapidFireBtn.textContent = '⚡ Active!';
+            
+            setTimeout(() => {
+                gameState.powerUps.rapidFire.active = false;
+                elements.rapidFireBtn.classList.remove('active');
+                elements.rapidFireBtn.textContent = '⚡ Rapid Fire (15s)';
+            }, 15000);
+        }
+
+        function activateGoldenHamster() {
+            if (gameState.powerUps.goldenHamster.active) return;
+            
+            gameState.powerUps.goldenHamster.active = true;
+            gameState.powerUps.goldenHamster.endTime = Date.now() + 10000;
+            
+            elements.goldenHamsterBtn.classList.add('active');
+            elements.goldenHamsterBtn.textContent = '🌟 Active!';
+            
+            elements.hamster.style.filter = 'hue-rotate(45deg) brightness(1.5) drop-shadow(0 0 20px gold)';
+            
+            setTimeout(() => {
+                gameState.powerUps.goldenHamster.active = false;
+                elements.goldenHamsterBtn.classList.remove('active');
+                elements.goldenHamsterBtn.textContent = '🌟 Golden Hamster (10s)';
+                elements.hamster.style.filter = '';
+            }, 10000);
+        }
+
+        // UI updates
+        function updateUI() {
+            elements.pointCount.textContent = formatNumber(gameState.points);
+            elements.multiplierValue.textContent = gameState.multiplier.toFixed(1);
+            elements.comboCount.textContent = gameState.combo;
+            elements.levelCount.textContent = gameState.level;
+            
+            // Update progress bars
+            const comboPercent = Math.min((gameState.combo / 100) * 100, 100);
+            elements.comboBar.style.width = comboPercent + '%';
+            elements.comboProgress.textContent = `${gameState.combo}/100`;
+            
+            const pointsForNextLevel = Math.floor(1000 * Math.pow(1.5, gameState.level - 1));
+            const levelPercent = Math.min((gameState.points / pointsForNextLevel) * 100, 100);
+            elements.levelBar.style.width = levelPercent + '%';
+            elements.levelProgress.textContent = `${formatNumber(gameState.points)}/${formatNumber(pointsForNextLevel)}`;
+        }
+
+        function updateTimerBar() {
+            const timeLeft = RESET_TIME - (Date.now() - gameState.lastClickTime);
+            const percentage = Math.max((timeLeft / RESET_TIME) * 100, 0);
+            elements.timerBar.style.width = percentage + '%';
+            elements.timerText.textContent = Math.max(timeLeft / 1000, 0).toFixed(1) + 's';
+            
+            if (timeLeft <= 0) {
+                resetGame();
+            }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Game reset
+        function resetGame() {
+            gameState.points = 0;
+            gameState.combo = 0;
+            gameState.multiplier = 1;
+            gameState.level = 1;
+            gameState.streak = 0;
+            updateUI();
+            elements.streakIndicator.classList.remove('show');
+            startResetTimer();
+        }
+
+        function startResetTimer() {
+            clearTimeout(resetTimer);
+            gameState.lastClickTime = Date.now();
+        }
+
+        // Main click handler
+        elements.hamster.addEventListener('click', (event) => {
+            const coinType = getRandomCoinType();
+            updateCombo();
+            
+            const pointsEarned = Math.round(coinType.value * gameState.multiplier);
+            gameState.points += pointsEarned;
+            
+            // Play sound
+            elements.soundClick.currentTime = 0;
+            elements.soundClick.play().catch(() => {});
+            
+            // Visual effects
+            createParticleBurst(event.clientX, event.clientY, coinType);
+            showCoinAnimation(event.clientX, event.clientY, coinType, pointsEarned);
+            
+            checkLevelUp();
+            updateUI();
+            startResetTimer();
+        });
+
+        function showCoinAnimation(x, y, coinType, points) {
+            const coin = document.createElement('div');
+            coin.className = 'coin';
+            coin.innerHTML = `${coinType.emoji} +${formatNumber(points)}`;
+            coin.style.left = x + 'px';
+            coin.style.top = y + 'px';
+            coin.style.color = coinType.color;
+            document.body.appendChild(coin);
+            setTimeout(() => coin.remove(), 1500);
+        }
+
+        // Game loop
+        function mainGameLoop() {
+            updateTimerBar();
+            updateMultiplier();
+            animationFrameId = requestAnimationFrame(mainGameLoop);
+        }
+
+        // Event listeners for power-up buttons
+        elements.doublePointsBtn.addEventListener('click', activateDoublePoints);
+        elements.rapidFireBtn.addEventListener('click', activateRapidFire);
+        elements.goldenHamsterBtn.addEventListener('click', activateGoldenHamster);
+
+        // Initialize game
+        function initGame() {
+            createBackgroundShapes();
+            updateUI();
+            startResetTimer();
+            mainGameLoop();
+        }
+
+        // Prevent scrolling on mobile
+        document.body.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+        }, { passive: false });
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
