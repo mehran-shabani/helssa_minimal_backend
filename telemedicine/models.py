@@ -317,3 +317,15 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
+    
+
+class APKDownloadStat(models.Model):
+    """
+    شمارندهٔ دانلود فایل APK (Single-row / keyed).
+    """
+    key = models.CharField(max_length=50, unique=True, default="helssa_apk")
+    total = models.PositiveBigIntegerField(default=0)
+    last_download_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.key} -> {self.total}"

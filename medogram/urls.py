@@ -24,7 +24,7 @@ urlpatterns = [
                   path('api/', include('telemedicine.roots'), name='home'),
                   path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
                   path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-                  path('agent/', include('medagent.roots')),
+                  path('chat/', include('chatbot.roots')),
                   path('certificate/', include('certificate.roots')),
                   path('down/', include('down.roots')),
                   path('doc/', include('doctor_online.roots')),

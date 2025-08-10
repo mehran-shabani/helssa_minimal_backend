@@ -1,12 +1,9 @@
 # certificate/admin.py
 from django.contrib import admin
-from django.utils.html import format_html
 from django.conf import settings
 import os
-import logging
-
-from .models import MedicalCertificate
-from .util import create_medical_certificate  # تابعی که PDF می‌سازد را اینجا ایمپورت کنید
+from certificate.models import MedicalCertificate
+from certificate.util import create_medical_certificate  # تابعی که PDF می‌سازد را اینجا ایمپورت کنید
 
 
 @admin.register(MedicalCertificate)
@@ -26,7 +23,7 @@ class MedicalCertificateAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)  # اول ذخیره کن تا ID ایجاد بشه
 
         # مسیر فایل PDF
-        pdf_dir = os.path.join(settings.MEDIA_ROOT, 'pdf/certificates')
+        pdf_dir = os.path.join(settings.MEDIA_ROOT, 'pdf', 'certificate')
         if not os.path.exists(pdf_dir):
             os.makedirs(pdf_dir)
 
@@ -42,9 +39,9 @@ class MedicalCertificateAdmin(admin.ModelAdmin):
         if pdf_created:
             obj.pdf_file_path = file_path
             obj.is_downloadable = True
+            
         else:
             logging.warning(f"PDF creation failed for certificate {obj.id}")
             obj.is_downloadable = False
-
-        # ذخیره نهایی پس از ساخت PDF
+        
         obj.save()

@@ -15,9 +15,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from kavenegar import APIException, HTTPException, KavenegarAPI
 from medogram.settings import BITPAY_API_KEY
-from .models import Comment, Blog, Order, Transaction, Visit, BoxMoney
+from .models import APKDownloadStat, Comment, Blog, Order, Transaction, Visit, BoxMoney
 from .serializers import (CustomUserProfileSerializer, BlogSerializer, BoxMoneySerializer, VisitSerializer,
                           CommentSerializer, CustomUserProfileJustUserNameSerializer)
+from telemedicine.signals import apk_downloaded
+
 
 User = get_user_model()
 
@@ -76,13 +78,31 @@ class VerifyOTPView(APIView):
             user = User.objects.get(phone_number=phone_number)
             if user.auth_code == int(code):
                 refresh = RefreshToken.for_user(user)
-                return Response({
+                response = Response({
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
-                })
-            return Response({'message': 'کد وارد شده صحیح نیست.'}, status=status.HTTP_400_BAD_REQUEST)
+                }, status=status.HTTP_200_OK)
+                
+                
+                # ─── پیامک خوش‌آمد فقط اگر هیچ ویزیتی ندارد ───
+                if not Visit.objects.filter(user=user).exists():
+                    try:
+                        api = KavenegarAPI(settings.KAVEH_NEGAR_API_KEY)
+                        api.verify_lookup({
+                            'receptor': user.phone_number,
+                            'token'   : 300000,   # مبلغ یا مقدار دل‌خواه
+                            'template': 'first-log',
+                        })
+                    except (APIException, HTTPException) as exc:
+                        logger.warning(f"Welcome SMS failed for {user.phone_number}: {exc}")
+
+                return response
+
+            return Response({'message': 'کد وارد شده صحیح نیست.'},
+                            status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
-            return Response({'message': 'کاربری با این شماره موبایل پیدا نشد.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'message': 'کاربری با این شماره موبایل پیدا نشد.'},
+                            status=status.HTTP_404_NOT_FOUND)
 
 
 class CreateTransaction(APIView):
@@ -187,7 +207,6 @@ class CreateVisit(APIView):
         serializer = VisitSerializer(visits, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -240,30 +259,44 @@ class CommentLikeDislikeView(APIView):
 
         return Response({'message': f'{actions.capitalize()} added', 'likes': comment.likes}, status=status.HTTP_200_OK)
 
-
 class ShowBoxMoneyView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def post(self, request):
         box_money = BoxMoney.objects.get(user=request.user)
         serializer = BoxMoneySerializer(box_money)
         return Response(serializer.data, status=status.HTTP_200_OK)
-        
+
+
+
 class DownloadAPKView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, *args, **kwargs):
-        # تعیین مسیر فایل از پوشه فعلی
-        current_directory = os.path.dirname(__file__)  # مسیر پوشه‌ای که views.py در آن قرار دارد
-        file_path = os.path.join(current_directory, 'apps', 'app-release.apk')  # تنظیم مسیر فایل APK
+        # مسیر فایل APK نسبت به همین اپ
+        current_directory = os.path.dirname(__file__)
+        file_path = os.path.join(current_directory, 'apps', 'app-release.apk')
 
-        # اطمینان از اینکه فایل وجود دارد
-        if os.path.exists(file_path):
-            # ارسال فایل APK به صورت پاسخ
-            response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename='helssa.apk')
-            return response
-        else:
+        if not os.path.exists(file_path):
             return Response({"error": "File not found"}, status=404)
+
+        # ارسال سیگنال شمارش (بدون IP — فقط ثبت شمارش)
+        apk_downloaded.send(sender=self.__class__)
+
+        # پاسخ دانلود فایل
+        response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename='helssa.apk')
+
+        # اختیاری: جلوگیری از cache سمت کلاینت/پراکسی تا شمارش واقعی بماند
+        response["Cache-Control"] = "no-store"
+
+        # اختیاری: عدد فعلی را در هدر برگردان (برای مانیتورینگ کلاینتی)
+        try:
+            stat = APKDownloadStat.objects.only("total").get(key="helssa_apk")
+            response["X-Helssa-Downloads"] = str(stat.total)
+        except APKDownloadStat.DoesNotExist:
+            response["X-Helssa-Downloads"] = "0"
+
+        return response
             
         
 class CreateSuperVisit(APIView):

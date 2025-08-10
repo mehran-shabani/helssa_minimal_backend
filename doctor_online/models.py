@@ -5,7 +5,6 @@ from django.db import models
 class Doctor(models.Model):
     first_name = models.CharField('نام', max_length=50)
     last_name  = models.CharField('نام خانوادگی', max_length=50)
-    email = models.EmailField('Email', unique=True)
     specialty  = models.CharField('تخصص', max_length=100)
     image      = models.ImageField('عکس', upload_to='doctors/')
     is_oncall  = models.BooleanField('آن‌کال', default=False)
@@ -14,24 +13,6 @@ class Doctor(models.Model):
     @property
     def full_name(self) -> str:
         return f'{self.first_name} {self.last_name}'.strip()
-    
-    @classmethod
-    def oncall_email(cls):
-        """
-        ایمیل تنها پزشک آن‌کال را برمی‌گرداند.
-        - اگر کسی آن‌کال نباشد: None
-        - اگر به‌اشتباه چند نفر آن‌کال باشند: ایمیل اولین رکورد
-        """
-        try:
-            return cls.objects.get(is_oncall=True).email
-        except cls.DoesNotExist:
-            return None
-        except cls.MultipleObjectsReturned:
-            return (
-                cls.objects.filter(is_oncall=True)
-                .values_list("email", flat=True)
-                .first()
-            )
     # ----------------------------
 
     class Meta:

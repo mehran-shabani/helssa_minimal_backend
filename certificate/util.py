@@ -46,7 +46,7 @@ def create_medical_certificate(first_name, last_name, national_code, sick_days, 
         pdfmetrics.registerFont(TTFont('IRANSans', font_path))
 
         # مسیر پوشه media/pdf
-        output_dir = os.path.join(settings.MEDIA_ROOT, 'pdf')
+        output_dir = os.path.join(settings.MEDIA_ROOT, 'pdf', 'certificate')
 
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)  # ساخت پوشه اگر وجود نداشته باشد
@@ -178,3 +178,4 @@ def create_medical_certificate(first_name, last_name, national_code, sick_days, 
     except Exception as e:
         logging.error(f"Error in creating PDF for {national_code}: {str(e)}")
         return False
+

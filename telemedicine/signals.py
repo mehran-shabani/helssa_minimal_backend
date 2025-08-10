@@ -5,11 +5,13 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMessage
 from django.db.models.signals import pre_save, post_save
-from django.dispatch import receiver
+from django.dispatch import receiver, Signal
 from django.template.loader import render_to_string
 from kavenegar import KavenegarAPI
-from .models import BoxMoney, Transaction, Visit
-from doctor_online.models import Doctor
+from telemedicine.models import BoxMoney, Transaction, Visit, APKDownloadStat
+from django.utils import timezone
+from django.db.models import F
+
 
 
 # ──────────────────────────────
@@ -79,13 +81,12 @@ def update_wallet_after_transaction(sender, instance, **kwargs):
 @receiver(post_save, sender=Visit)
 def send_visit_email(sender, instance, created, **kwargs):
     if created:
-        doctor_email = Doctor.oncall_email()
         html_content = render_to_string('visit_email.html', {'visit': instance})
         email = EmailMessage(
             subject=f"Visit Details: {instance.name}",
             body=html_content,
             from_email='info@medogram.ir',
-            to=[doctor_email],
+            to=['shabanimehran@gmail.com'],
         )
         email.content_subtype = "html"
         email.send()
@@ -110,3 +111,16 @@ def sms_visit_created(sender, instance, created, **kwargs):
             })
         except Exception as exc:  # noqa: BLE001
             print(f"[WARN] Kavenegar register-visit SMS failed: {exc}")
+
+            
+apk_downloaded = Signal()
+
+@receiver(apk_downloaded)
+def on_apk_downloaded(sender, **kwargs):
+    # اگر ردیف وجود ندارد، بساز
+    APKDownloadStat.objects.get_or_create(key="helssa_apk")
+    # افزایش اتمیک و ثبت زمان آخرین دانلود
+    APKDownloadStat.objects.filter(key="helssa_apk").update(
+        total=F('total') + 1,
+        last_download_at=timezone.now()
+    )

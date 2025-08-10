@@ -16,7 +16,7 @@ class DoctorAdminForm(ModelForm):
 
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
-    list_display  = ('first_name', 'last_name', 'email', 'specialty', 'is_oncall')
+    list_display  = ('first_name', 'last_name', 'specialty', 'is_oncall')
     list_filter   = ('specialty', 'is_oncall')
     search_fields = ('first_name', 'last_name', 'specialty')
     form          = DoctorAdminForm

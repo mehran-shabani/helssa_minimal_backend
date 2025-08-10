@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import CustomUser, Visit, Transaction, Blog, Comment, BoxMoney, Order
+from telemedicine.models import  CustomUser, Visit, Transaction, Blog, Comment, BoxMoney, Order, APKDownloadStat
+                              
+
+                                                   
 
 
 @admin.register(CustomUser)
@@ -98,3 +101,8 @@ class OrderAdmin(admin.ModelAdmin):
     search_fields = ['first_name', 'last_name', 'national_code', 'order_number', 'disease_name']
     list_per_page = 20
     
+@admin.register(APKDownloadStat)
+class APKDownloadStatAdmin(admin.ModelAdmin):
+    list_display = ("key", "total", "last_download_at")
+    search_fields = ("key",)
+    readonly_fields = ("key", "total", "last_download_at")

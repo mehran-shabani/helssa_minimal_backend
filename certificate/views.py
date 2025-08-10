@@ -1,5 +1,6 @@
 # certificate/ views.py
 import os
+from django.shortcuts import render
 from rest_framework import permissions
 from django.contrib.auth import get_user_model
 from django.http import FileResponse
@@ -68,5 +69,10 @@ class VerifyCertificateView(TemplateView):
             })
 
         return context
+    
+
+def hamesterview(request):
+    template = 'hamester.html'
+    return render(request, template)
         
     

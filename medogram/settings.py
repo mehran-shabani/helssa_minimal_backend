@@ -6,23 +6,45 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = os.getenv('DEBUG', default=True)
+DEBUG = os.getenv('DEBUG', default=False)
 
 ALLOWED_HOSTS = ['*']
-
+# cors --------------------
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://medogram.ir',
-    'https://pwa.medogram.ir',
+    'https://helssa.ir',
+    'https://django-med.chbk.app',
+]
 
+CORS_ALLOW_HEADERS = [
+    'authorization',
+    'content-type',
+    'x-csrftoken',
+    'accept'
 ]
-# --------------  CSRF_TRUSTED_ORIGINS  --------------
-# از Django 4.0 به بعد باید scheme هم صراحتاً ذکر شود.
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-]
+
+
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+ROOT_URLCONF = 'medogram.urls'
+
+
+# csrf -------------
+CSRF_TRUSTED_ORIGINS = [
+    "https://medogram.ir",
+    "https://www.medogram.ir",
+    "https://helssa.ir",
+    "https://www.helssa.ir",
+    "https://api.medogram.ir",
+    "https://django-med.chbk.app"
+]
+
+# فقط در صورت نیاز به به‌اشتراک‌گذاری کوکی‌ها بین دامنه‌ها:
+CSRF_COOKIE_DOMAIN = ".medogram.ir"  # اگر تمام زیر دامنه‌ها باید به CSRF cookie دسترسی داشته باشند
+CSRF_COOKIE_SAMESITE = "None"        # برای پشتیبانی از cross-origin
+CSRF_COOKIE_SECURE = True            # حتماً فعال باشد چون HTTPS دارید
 
 
 INSTALLED_APPS = [
@@ -39,7 +61,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'simple_history',
-    'medagent.apps.MedAgentConfig',
+    'chatbot.apps.ChatBotConfig',
     'certificate.apps.CertificateConfig',
     'down.apps.DownConfig',
     'doctor_online.apps.DoctorOnlineConfig',
@@ -93,8 +115,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
-ROOT_URLCONF = 'medogram.urls'
+
 
 TEMPLATES = [
     {
@@ -117,15 +138,29 @@ TEMPLATES = [
 WSGI_APPLICATION = 'medogram.wsgi.application'
 # تنظیمات دیتابیس
 DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DB_ENGINE', default='django.db.backends.sqlite3'),
-        'NAME': os.getenv('DB_NAME', default=BASE_DIR / 'db.sqlite3'),
-        'USER': os.getenv('DB_USER', default=None),
-        'PASSWORD': os.getenv('DB_PASSWORD', default=None),
-        'HOST': os.getenv('DB_HOST', default=None),
-        'PORT': os.getenv('DB_PORT', default=None),
-        'CONN_MAX_AGE': os.getenv('DB_CONN_MAX_AGE', default=0),
-        
+    "default": {
+        # موتور پایگاه‌داده (پیش‌فرض: MySQL)
+        "ENGINE": os.getenv("DB_ENGINE", 'django.db.backends.sqlite3'),
+
+        # نام پایگاه‌داده
+        "NAME": os.getenv("DB_DATABASE", f'{BASE_DIR}, db.sqlite3'),
+
+        # اعتبارسنجی کاربر
+        "USER": os.getenv("DB_USERNAME", None),
+        "PASSWORD": os.getenv("DB_PASSWORD", None),
+
+        # مشخصات سرور
+        "HOST": os.getenv("DB_HOST", None),
+        "PORT": os.getenv("DB_PORT", None),
+
+        # نگه‌داری اتصال برحسب ثانیه (اختیاری)
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
+
+        # گزینه‌های توصیه‌شده برای MySQL
+ #       "OPTIONS": {
+ #           "charset": "utf8mb4",
+ #           "sql_mode": "STRICT_TRANS_TABLES",
+ #       },
     }
 }
 
@@ -184,7 +219,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
 
@@ -206,39 +241,20 @@ IMAGE_UPLOAD_SETTINGS = {
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', default=None)
 EMAIL_HOST = os.getenv('EMAIL_HOST', default=None)
 EMAIL_PORT = os.getenv('EMAIL_PORT', default=None)
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', default=True)
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', default=False)
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', default=False)
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', default=None)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', default=None)
 
 
-CHATBOT_PLUS_SETTINGS = {"MAX_TITLE_LENGTH": 50}
+
 # pass
 TALKBOT_API_KEY = os.getenv('TALKBOT_API_KEY', default='sk-your-api-key-here')
-TALKBOT_BASE_URL = os.getenv('TALKBOT_BASE_URL', default='https://api.talkbot.ir')
+TALKBOT_BASE_URL = os.getenv('TALKBOT_BASE_URL', default='https://api.talkbot.ir/v1/')
 BITPAY_API_KEY = os.getenv('BITPAY_API_KEY', default='your-bitpay-api-key-here')
 KAVEH_NEGAR_API_KEY = os.getenv('KAVEH_NEGAR_API_KEY', default='your-kaveh-negar-api-key-here')
-CORS_ALLOW_HEADERS = [
-    'authorization',
-    'content-type',
-    'x-csrftoken',
-    'accept'
-]
-# main_site
-SITE_URL = 'https://medogram.ir'
-# ChatBot Plus Settings
-CHATBOT_PLUS_SETTINGS = {
-    'MAX_SESSIONS_PER_USER': 100,
-    'MAX_MESSAGES_PER_SESSION': 200,
-    'SESSION_TIMEOUT_HOURS': 24,
-    'DEFAULT_TOKEN_ESTIMATION_MULTIPLIER': 1.2,
-    'MAX_SUMMARY_LENGTH': 2000,
-    'MAX_TITLE_LENGTH': 50,
-    'ENABLE_CONVERSATION_MEMORY': True,
-    'MEMORY_BUFFER_SIZE': 10,
-    'MEMORY_MAX_TOKENS': 8000,
-}
+
 
 CACHES = {
     "default": {
@@ -248,8 +264,6 @@ CACHES = {
     }
 }
 
-if 'test' in sys.argv:
-    TALKBOT_API_KEY = 'test-key'
 
 # Session Configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'

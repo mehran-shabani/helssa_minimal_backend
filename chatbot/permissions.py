@@ -1,12 +1,12 @@
+# chatbot / permisions.py
 """
-Custom permission classes for MedAgent.
+Custom permission classes for chatbot.
 
 - HasActiveSubscription : فقط کاربرانی را می‌پذیرد که یک Subscription فعال دارند.
 - PatientHasActiveSubscription : بررسی می‌کند بیمار (از طریق پارامتر URL) اشتراک فعال دارد.
 """
 
 from rest_framework.permissions import BasePermission
-from django.shortcuts import get_object_or_404
 from sub.models import Subscription
 from django.contrib.auth import get_user_model
 
