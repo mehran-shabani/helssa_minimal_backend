@@ -49,6 +49,9 @@ class ChatSummarySerializer(serializers.ModelSerializer):
             "raw_text",
             "rewritten_text",
             "structured_json",
+            "last_message_id",
+            "is_stale",
+            "in_progress",
             "created_at",
             "updated_at",
         )

@@ -71,6 +71,11 @@ class ChatSummary(models.Model):
     rewritten_text = models.TextField(help_text="Output produced by rewriter API.")
     structured_json = models.JSONField(default=dict, blank=True)
 
+    # Fields for controlling asynchronous rebuilds without external locking
+    last_message_id = models.IntegerField(default=0)
+    is_stale = models.BooleanField(default=True)
+    in_progress = models.BooleanField(default=False)
+
     class Meta:
         ordering = ["-updated_at"]
         verbose_name = "Chat summary"

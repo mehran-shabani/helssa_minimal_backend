@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'corsheaders',
     'simple_history',
-    'chatbot.apps.ChatBotConfig',
+    'chatbot.apps.ChatbotConfig',
     'certificate.apps.CertificateConfig',
     'down.apps.DownConfig',
     'doctor_online.apps.DoctorOnlineConfig',
@@ -160,10 +160,11 @@ DATABASES = {
         "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
 
         # گزینه‌های توصیه‌شده برای MySQL
+        # SQLite does not accept MySQL-specific OPTIONS; guard them.
         "OPTIONS": {
             "charset": "utf8mb4",
             "sql_mode": "STRICT_TRANS_TABLES",
-        },
+        } if os.getenv("DB_ENGINE", 'django.db.backends.sqlite3').startswith('django.db.backends.mysql') else {},
     }
 }
 

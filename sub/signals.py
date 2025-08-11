@@ -25,6 +25,10 @@ def grant_welcome_subscription(sender, instance: User, created: bool, **kwargs):
         return
 
     now = timezone.now()
+    # اگر مدل Subscription اجازه‌ی مقدار null برای plan ندهد، از ایجاد اشتراک هدیه صرف نظر می‌کنیم
+    if not Subscription._meta.get_field("plan").null:
+        return
+
     Subscription.objects.create(
         user=instance,
         plan=None,
