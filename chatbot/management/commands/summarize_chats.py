@@ -5,12 +5,13 @@
 # ==============================
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
-from chatbot.utils.text_summary import summarize_user_chats
+from chatbot.tasks import rebuild_global_summary
+from chatbot.utils.text_summary import get_or_create_global_summary
 
 User = get_user_model()
 
 class Command(BaseCommand):
-    help = "Create / refresh a global ChatSummary for given user (optionally limit sessions)."
+    help = "Create or refresh a global ChatSummary for given user (optionally limit sessions)."
 
     def add_arguments(self, parser):
         parser.add_argument("username", help="Username to summarise")
@@ -23,5 +24,7 @@ class Command(BaseCommand):
         except User.DoesNotExist as exc:
             raise CommandError(str(exc))
 
-        summary = summarize_user_chats(user, limit_sessions=options["limit"])
-        self.stdout.write(self.style.SUCCESS(f"Summary #{summary.pk} generated."))
+        # Ensure a summary exists and rebuild it synchronously
+        get_or_create_global_summary(user)
+        rebuild_global_summary(user.id, limit_sessions=options["limit"])
+        self.stdout.write(self.style.SUCCESS("Summary generated."))
