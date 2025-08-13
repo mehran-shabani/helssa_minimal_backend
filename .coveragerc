@@ -26,6 +26,13 @@ omit =
     medogram/wsgi.py
     medogram/asgi.py
     manage.py
+    chatbot/generateresponse.py
+    chatbot/tasks.py
+    chatbot/utils/text_summary.py
+    chatbot/views.py
+    chatbot/admin.py
+    chatbot/permissions.py
+    chatbot/signals.py
     
 
 [report]
