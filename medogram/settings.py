@@ -271,3 +271,16 @@ CACHES = {
 # Session Configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 SESSION_CACHE_ALIAS = 'default'
+
+
+# ---- GapGPT / OpenAI compatible ----
+GAPGPT_BASE_URL = os.getenv('GAPGPT_BASE_URL', 'https://api.gapgpt.app/v1')
+GAPGPT_API_KEY  = os.getenv('GAPGPT_API_KEY') or os.getenv('OPENAI_API_KEY')
+
+# مدل‌ها
+VISION_MODEL_NAME   = os.getenv('VISION_MODEL_NAME', 'gpt-4o')        # برای بینایی
+SUMMARY_MODEL_NAME  = os.getenv('SUMMARY_MODEL_NAME', 'o3-mini')      # یا 'gpt-4o-mini'
+
+# توکن‌ها
+RESPONSE_MAX_TOKENS = int(os.getenv('RESPONSE_MAX_TOKENS', '1500'))
+SUMMARY_MAX_TOKENS  = int(os.getenv('SUMMARY_MAX_TOKENS', '900'))
