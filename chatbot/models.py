@@ -1,86 +1,57 @@
-# chatbot / models.py 
-
-# ==============================
-# models.py
-# ==============================
+from __future__ import annotations
+from django.conf import settings
 from django.db import models
-from django.contrib.auth import get_user_model
 from django.utils import timezone
-
-User = get_user_model()
+from simple_history.models import HistoricalRecords
 
 class ChatSession(models.Model):
-    """Represents a logical conversation ("session") between a user and the bot."""
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_sessions")
-    title = models.CharField(max_length=120, blank=True, default="")
-    started_at = models.DateTimeField(default=timezone.now)
-    ended_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_sessions")
     is_open = models.BooleanField(default=True)
+    started_at = models.DateTimeField(default=timezone.now)
+    history = HistoricalRecords(inherit=True)
 
-    class Meta:
-        ordering = ["-started_at"]
-        verbose_name = "Chat session"
-        verbose_name_plural = "Chat sessions"
-
-    def __str__(self) -> str:  # pragma: no cover
-        status = "open" if self.is_open else "closed"
-        return f"Session #{self.pk} – {self.user} ({status})"
-
-    # ------------------------------------------------------------------
-    def end(self, when: timezone.datetime | None = None) -> None:
-        """Mark session as ended (idempotent)."""
-        if not self.is_open:
-            return
-        self.is_open = False
-        self.ended_at = when or timezone.now()
-        self.save(update_fields=["is_open", "ended_at"])
-
+    def __str__(self):
+        return f"{self.user_id}#{self.id} open={self.is_open}"
 
 class ChatMessage(models.Model):
-    """Stores a single message exchanged inside a ChatSession."""
-
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_messages")
     is_bot = models.BooleanField(default=False)
-    message = models.TextField()
-    created_at = models.DateTimeField(default=timezone.now)
+    message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["created_at"]
-        verbose_name = "Chat message"
-        verbose_name_plural = "Chat messages"
-
-    def __str__(self) -> str:  # pragma: no cover
-        role = "BOT" if self.is_bot else "USER"
-        return f"[{self.created_at:%Y-%m-%d %H:%M}] {role}: {self.message[:40]}…"
-
+        indexes = [models.Index(fields=["session","created_at"])]
 
 class ChatSummary(models.Model):
-    """Stores AI-generated rewrites / summaries of one session or the whole history."""
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="chat_summaries")
-    session = models.ForeignKey(ChatSession, null=True, blank=True, on_delete=models.SET_NULL, related_name="summaries")
-
-    created_at = models.DateTimeField(default=timezone.now)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_summaries")
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="summaries", null=True, blank=True)
+    model_used = models.CharField(max_length=60, default="")
+    raw_text = models.TextField(blank=True, default="")
+    rewritten_text = models.TextField(blank=True, default="")
+    structured_json = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    model_used = models.CharField(max_length=32, default="zarin-1.0")
-
-    raw_text = models.TextField(help_text="Full concatenated conversation text sent to rewriter API.")
-    rewritten_text = models.TextField(help_text="Output produced by rewriter API.")
-    structured_json = models.JSONField(default=dict, blank=True)
-
-    # Fields for controlling asynchronous rebuilds without external locking
-    last_message_id = models.IntegerField(default=0)
-    is_stale = models.BooleanField(default=True)
-    in_progress = models.BooleanField(default=False)
-
     class Meta:
-        ordering = ["-updated_at"]
-        verbose_name = "Chat summary"
-        verbose_name_plural = "Chat summaries"
+        # فقط یک خلاصه به ازای هر جلسه / و حداکثر یکی global (session=NULL) در کد enforce می‌شود
+        constraints = [
+            models.UniqueConstraint(fields=["user","session"], name="uniq_summary_per_user_session")
+        ]
+        indexes = [models.Index(fields=["user","updated_at"])]
 
-    def __str__(self) -> str:  # pragma: no cover
-        tgt = f"session {self.session_id}" if self.session_id else "global"
-        return f"Summary #{self.pk} ({tgt})"
+class UsageLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="usage_logs")
+    session = models.ForeignKey(ChatSession, on_delete=models.SET_NULL, null=True, blank=True)
+    model = models.CharField(max_length=60, default="")
+    input_chars = models.IntegerField(default=0)
+    output_chars = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class ToolCallLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="tool_logs")
+    name = models.CharField(max_length=80)
+    arguments = models.JSONField(default=dict, blank=True)
+    result = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)

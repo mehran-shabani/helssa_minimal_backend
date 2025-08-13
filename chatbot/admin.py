@@ -8,18 +8,9 @@ from chatbot.models import ChatSession, ChatMessage, ChatSummary
 
 @admin.register(ChatSession)
 class ChatSessionAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "title", "is_open", "started_at", "ended_at")
+    list_display = ("id", "user", "is_open", "started_at")
     list_filter = ("is_open", "started_at")
-    search_fields = ("title", "user__username", "user__email")
-    actions = [
-        "force_close_sessions",
-    ]
-
-    @admin.action(description="Force close selected sessions")
-    def force_close_sessions(self, request, queryset):
-        for session in queryset:
-            session.end()
-        self.message_user(request, f"Closed {queryset.count()} sessions.")
+    search_fields = ("user__username", "user__email")
 
 
 @admin.register(ChatMessage)

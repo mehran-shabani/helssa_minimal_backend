@@ -50,6 +50,21 @@ CSRF_COOKIE_SAMESITE = "None"        # برای پشتیبانی از cross-orig
 CSRF_COOKIE_SECURE = True            # حتماً فعال باشد چون HTTPS دارید
 
 
+# --- AI backend (OpenAI-compatible) ---
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.gapgpt.app/v1")
+OPENAI_API_KEY  = os.getenv("OPENAI_API_KEY", "")
+
+CHAT_MODEL_TEXT   = os.getenv("CHAT_MODEL_TEXT", "gpt-4o-mini")
+CHAT_MODEL_VISION = os.getenv("CHAT_MODEL_VISION", "gpt-4o")
+SUMMARY_MODEL     = os.getenv("SUMMARY_MODEL", "o3-mini")
+
+OPENAI_TIMEOUT_CONNECT = int(os.getenv("OPENAI_TIMEOUT_CONNECT", "6"))
+OPENAI_TIMEOUT_READ    = int(os.getenv("OPENAI_TIMEOUT_READ", "45"))
+OPENAI_MAX_TOKENS      = int(os.getenv("OPENAI_MAX_TOKENS", "1500"))  # سقف امن روی سرویس
+
+# تقریبی: هر توکن ~ 4 کاراکتر
+CHARS_PER_TOKEN = float(os.getenv("CHARS_PER_TOKEN", "4.0"))
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -189,7 +204,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # logging
-"""
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -205,7 +219,7 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG', 
+            'level': 'DEBUG',
         },
         'django.db.backends': {
             'handlers': ['console', 'file'],
@@ -213,7 +227,8 @@ LOGGING = {
         },
     },
 }
-"""
+LOGGING["loggers"]["chatbot"] = {"handlers": ["console", "file"], "level": "DEBUG"}
+LOGGING["loggers"]["sub"] = {"handlers": ["console", "file"], "level": "DEBUG"}
 
 LANGUAGE_CODE = 'en-us'
 
@@ -254,8 +269,6 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', default=None)
 
 
 # pass
-TALKBOT_API_KEY = os.getenv('TALKBOT_API_KEY', default='sk-your-api-key-here')
-TALKBOT_BASE_URL = os.getenv('TALKBOT_BASE_URL', default='https://api.talkbot.ir/v1/')
 BITPAY_API_KEY = os.getenv('BITPAY_API_KEY', default='your-bitpay-api-key-here')
 KAVEH_NEGAR_API_KEY = os.getenv('KAVEH_NEGAR_API_KEY', default='your-kaveh-negar-api-key-here')
 
