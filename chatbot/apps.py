@@ -13,7 +13,6 @@ class ChatbotConfig(AppConfig):
     name = "chatbot"
 
     def ready(self):
-        # Import signal handlers
-        from . import signals  # noqa: F401
+        pass
 
 

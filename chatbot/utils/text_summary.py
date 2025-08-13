@@ -1,15 +1,13 @@
-"""Utility helpers for conversation summarisation.
-
-These functions avoid blocking the request/response cycle. They simply return
-the latest stored summaries and, when needed, schedule Celery tasks to rebuild
-them in the background.
 """
-
+Summarization utilities using OpenAI-compatible Chat Completions.
+- Model: settings.SUMMARY_MODEL (default: o3-mini)
+- Ensures single summary per (user, session) and one global (via code dedupe).
+"""
 from __future__ import annotations
-
+import json
 import logging
 from datetime import timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import requests
 from django.conf import settings
@@ -20,157 +18,151 @@ from chatbot.models import ChatSession, ChatSummary
 
 logger = logging.getLogger(__name__)
 
-# Rewriter API configuration
-REWRITER_ENDPOINT = "https://api.talkbot.ir/v1/text/rewriter/REQ"
-REWRITER_MODEL = "zarin-1.0"
-API_TIMEOUT = 45  # seconds
+API_URL = f"{settings.OPENAI_BASE_URL}/chat/completions"
+API_KEY = settings.OPENAI_API_KEY
+TIMEOUT = (settings.OPENAI_TIMEOUT_CONNECT, settings.OPENAI_TIMEOUT_READ)
+MODEL = getattr(settings, "SUMMARY_MODEL", "o3-mini")
 
-# TTLs for refreshing summaries (in minutes)
-GLOBAL_TTL_MIN = 60 * 24   # 24 hours
-SESSION_TTL_MIN = 60 * 12  # 12 hours
+GLOBAL_TTL_MIN = 60 * 6   # 6h
+SESSION_TTL_MIN = 30      # 30m
 
-
-def _headers() -> Dict[str, str]:
-    return {
-        "Authorization": f"Bearer {settings.TALKBOT_API_KEY}",
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-
+def _headers():
+    return {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
 
 def _serialize_conversation(sessions: List[ChatSession]) -> str:
     lines: List[str] = []
     for s in sessions:
-        for m in s.messages.select_related("user"):
+        for m in s.messages.select_related("user").order_by("created_at"):
             role = "USER" if not m.is_bot else "BOT "
             ts = m.created_at.strftime("%Y-%m-%d %H:%M")
             lines.append(f"[{ts}] {role}: {m.message}")
     return "\n".join(lines)
 
-
-MIN_CHARS = 100
-MAX_CHARS = 20_000
-PADDING_TOKEN = "‌"  # Zero-width non-joiner
-
-
-def _call_rewriter_api(text: str, *, model: str = REWRITER_MODEL) -> str:
-    original_len = len(text)
-    if original_len < MIN_CHARS:
-        padding_needed = MIN_CHARS - original_len
-        text += PADDING_TOKEN * padding_needed
-    if len(text) > MAX_CHARS:
-        text = text[:MAX_CHARS]
-
-    data = {
-        "text": text,
-        "model": model,
-        "summary": "true",
-        "translate": "none",
-        "style": "8",
-        "paraphrase-type": "8",
-        "textlanguage": "fa",
-        "half-space": "0",
+def _call_llm_for_summary(raw_text: str) -> Dict[str, str]:
+    """
+    Returns dict: {"rewritten": str, "structured": dict}
+    """
+    system = (
+        "بازنویسی مختصر و رسمی مکالمهٔ پزشکی فارسی. سپس استخراج ساختاریافته:\n"
+        "- history: سابقه و شرح حال\n- symptoms: علائم\n- medications: داروها/دوز\n- recommendations: توصیه‌ها\n"
+        "خروجی دقیق و کوتاه باشد."
+    )
+    user_prompt = f"متن مکالمات:\n{raw_text}"
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user_prompt},
+    ]
+    payload = {
+        "model": MODEL,
+        "messages": messages,
+        "max_tokens": 800,
+        "temperature": 0.2,
+        # مدل‌های reasoning ممکن است این پارامتر را پشتیبانی کنند:
+        "reasoning": {"effort": "medium"},
     }
     try:
-        resp = requests.post(REWRITER_ENDPOINT, headers=_headers(), data=data, timeout=API_TIMEOUT)
-        resp.raise_for_status()
-        payload = resp.json()
-        rewritten_text = payload.get("result", {}).get("text")
-        if not rewritten_text:
-            logger.error("Unexpected Rewriter response: %s", payload)
-            return text.strip()
-        if original_len < MIN_CHARS:
-            rewritten_text = rewritten_text[:original_len].rstrip()
-        return rewritten_text
-    except Exception as exc:  # pragma: no cover - network failures
-        logger.exception("Rewriter API failed: %s", exc)
-        return text.strip()
+        r = requests.post(API_URL, data=json.dumps(payload), headers=_headers(), timeout=TIMEOUT)
+        if not r.ok:
+            logger.warning("Summary http %s: %s", r.status_code, r.text[:200])
+            text = r.text or ""
+            return {"rewritten": text[:1000], "structured": {}}
+        data = r.json() or {}
+        content = ""
+        try:
+            content = (data.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
+        except Exception:
+            content = ""
+        rewritten = content.strip()[:20000]
 
+        structured = _simple_medical_extract(rewritten)
+        return {"rewritten": rewritten, "structured": structured}
+    except Exception as exc:
+        logger.exception("Summary API failed: %s", exc)
+        return {"rewritten": raw_text[:20000], "structured": {}}
 
 def _simple_medical_extract(text: str) -> Dict:
     sections = {"history": [], "symptoms": [], "medications": [], "recommendations": []}
     for line in text.splitlines():
         t = line.strip()
-        if any(k in t for k in ("سابقه", "تاریخچه")):
+        if any(k in t for k in ("سابقه", "تاریخچه", "شرح حال")):
             sections["history"].append(t)
-        if any(k in t for k in ("دارو", "mg", "قرص")):
+        if any(k in t for k in ("دارو", "mg", "میلی‌گرم", "قرص", "دوز")):
             sections["medications"].append(t)
-        if any(k in t for k in ("درد", "تب", "سرفه")):
+        if any(k in t for k in ("درد", "تب", "سرفه", "تنگی نفس", "تهوع", "خستگی")):
             sections["symptoms"].append(t)
-        if any(k in t for k in ("پیشنهاد", "توصیه", "درمان")):
+        if any(k in t for k in ("پیشنهاد", "توصیه", "پیگیری", "درمان")):
             sections["recommendations"].append(t)
     return {k: "\n".join(v) for k, v in sections.items()}
-
-
-# --- Non-blocking helpers for request path ---------------------------------
 
 def _is_expired(obj: ChatSummary, ttl_minutes: int) -> bool:
     return (timezone.now() - obj.updated_at) > timedelta(minutes=ttl_minutes)
 
+def _ensure_single_summary(user, session: Optional[ChatSession]) -> Optional[ChatSummary]:
+    """
+    Dedup summaries for (user, session). Keeps the latest one, deletes others.
+    """
+    qs = ChatSummary.objects.filter(user=user, session=session).order_by("-updated_at")
+    summaries = list(qs)
+    if not summaries:
+        return None
+    keep = summaries[0]
+    to_delete = [s.id for s in summaries[1:]]
+    if to_delete:
+        ChatSummary.objects.filter(id__in=to_delete).delete()
+    return keep
 
-def _schedule_safe(task_kind: str, **kwargs):
-    """Schedule Celery tasks, swallowing errors if Celery is unavailable."""
-    try:
-        if task_kind == "session":
-            from chatbot.tasks import rebuild_session_summary
-
-            rebuild_session_summary.apply_async(kwargs={"session_id": kwargs["session_id"]}, countdown=60)
-        elif task_kind == "global":
-            from chatbot.tasks import rebuild_global_summary
-
-            rebuild_global_summary.apply_async(kwargs={"user_id": kwargs["user_id"]}, countdown=120)
-    except Exception as exc:  # pragma: no cover - Celery misconfig
-        logger.warning("Celery scheduling failed (non-fatal): %s", exc)
-
-
-def get_or_create_global_summary(user) -> ChatSummary:
-    summary = (
-        ChatSummary.objects.filter(user=user, session__isnull=True)
-        .order_by("-updated_at")
-        .first()
-    )
-    if summary:
-        if _is_expired(summary, GLOBAL_TTL_MIN) and not summary.in_progress:
-            summary.is_stale = True
-            summary.save(update_fields=["is_stale", "updated_at"])
-            _schedule_safe("global", user_id=user.id)
-        return summary
-
+def summarize_user_chats(user, *, limit_sessions: int | None = None) -> ChatSummary:
+    qs = ChatSession.objects.filter(user=user).order_by("-started_at")
+    if limit_sessions:
+        qs = qs[:limit_sessions]
+    sessions = list(qs)
+    if not sessions:
+        raise ValueError("No chat sessions found for user.")
+    raw = _serialize_conversation(sessions)
+    result = _call_llm_for_summary(raw)
     with transaction.atomic():
-        summary = ChatSummary.objects.create(
+        existing = _ensure_single_summary(user, None)
+        if existing:
+            existing.model_used = MODEL
+            existing.raw_text = raw
+            existing.rewritten_text = result["rewritten"]
+            existing.structured_json = result["structured"]
+            existing.save(update_fields=["model_used","raw_text","rewritten_text","structured_json","updated_at"])
+            return existing
+        return ChatSummary.objects.create(
             user=user,
             session=None,
-            model_used=REWRITER_MODEL,
-            raw_text="",
-            rewritten_text="",
-            structured_json={},
-            is_stale=True,
-            last_message_id=0,
-            in_progress=False,
+            model_used=MODEL,
+            raw_text=raw,
+            rewritten_text=result["rewritten"],
+            structured_json=result["structured"],
         )
-    _schedule_safe("global", user_id=user.id)
-    return summary
 
-
-def get_or_update_session_summary(session) -> ChatSummary:
-    summary = session.summaries.order_by("-updated_at").first()
-    if summary:
-        if (summary.is_stale or _is_expired(summary, SESSION_TTL_MIN)) and not summary.in_progress:
-            summary.is_stale = True
-            summary.save(update_fields=["is_stale", "updated_at"])
-            _schedule_safe("session", session_id=session.id)
+def get_or_create_global_summary(user) -> ChatSummary:
+    summary = _ensure_single_summary(user, None)
+    if summary and not _is_expired(summary, GLOBAL_TTL_MIN):
         return summary
+    return summarize_user_chats(user)
 
+def get_or_update_session_summary(session: ChatSession) -> ChatSummary:
+    summary = _ensure_single_summary(session.user, session)
+    if summary and not _is_expired(summary, SESSION_TTL_MIN):
+        return summary
+    raw = _serialize_conversation([session])
+    result = _call_llm_for_summary(raw)
     with transaction.atomic():
-        summary = ChatSummary.objects.create(
+        if summary:
+            summary.model_used = MODEL
+            summary.raw_text = raw
+            summary.rewritten_text = result["rewritten"]
+            summary.structured_json = result["structured"]
+            summary.save(update_fields=["model_used","raw_text","rewritten_text","structured_json","updated_at"])
+            return summary
+        return ChatSummary.objects.create(
             user=session.user,
             session=session,
-            model_used=REWRITER_MODEL,
-            raw_text="",
-            rewritten_text="",
-            structured_json={},
-            is_stale=True,
-            last_message_id=0,
-            in_progress=False,
+            model_used=MODEL,
+            raw_text=raw,
+            rewritten_text=result["rewritten"],
+            structured_json=result["structured"],
         )
-    _schedule_safe("session", session_id=session.id)
-    return summary

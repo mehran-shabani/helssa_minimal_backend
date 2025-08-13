@@ -10,11 +10,9 @@ from django.apps import AppConfig
 class SubConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'sub'
-    verbose_name = "مدیریت اشتراک"
 
     def ready(self):
-
-        import sub.signals
+        from . import signals  # noqa
 
 
     
