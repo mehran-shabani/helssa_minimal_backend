@@ -5,13 +5,31 @@ from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 class ChatSession(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_sessions")
-    is_open = models.BooleanField(default=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="chat_sessions",
+    )
+    title = models.CharField(max_length=120, blank=True, default="")
     started_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    is_open = models.BooleanField(default=True)
     history = HistoricalRecords(inherit=True)
 
-    def __str__(self):
+    def __str__(self) -> str:  # pragma: no cover - simple debug aid
         return f"{self.user_id}#{self.id} open={self.is_open}"
+
+    def end(self, when: timezone.datetime | None = None) -> None:
+        """Close the session and set the end time.
+
+        Tests expect a lightweight ``end`` helper which marks the
+        session as closed.  Some older test data relies on this method
+        existing, so we implement it here instead of directly updating
+        fields in the management command.
+        """
+        self.is_open = False
+        self.ended_at = when or timezone.now()
+        self.save(update_fields=["is_open", "ended_at"])
 
 class ChatMessage(models.Model):
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
@@ -30,6 +48,9 @@ class ChatSummary(models.Model):
     raw_text = models.TextField(blank=True, default="")
     rewritten_text = models.TextField(blank=True, default="")
     structured_json = models.JSONField(default=dict, blank=True)
+    last_message_id = models.IntegerField(default=0)
+    is_stale = models.BooleanField(default=True)
+    in_progress = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

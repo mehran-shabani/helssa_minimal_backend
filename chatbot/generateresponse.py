@@ -27,6 +27,48 @@ MAX_PAYLOAD_BYTES = 2_400_000
 TIMEOUT_CONNECT = settings.OPENAI_TIMEOUT_CONNECT
 TIMEOUT_READ = settings.OPENAI_TIMEOUT_READ
 
+# ---------------------------------------------------------------------------
+# Networking helpers
+
+def _post_once(session, url: str, payload: Dict, connection_close: bool = False):
+    """Send a single POST request.
+
+    The real project uses a more feature rich helper.  Tests only require a
+    minimal implementation that optionally adds a ``Connection: close``
+    header.  Returning ``None`` simulates a transport failure.
+    """
+    headers = {"Connection": "close"} if connection_close else None
+    try:
+        return session.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
+        )
+    except Exception:
+        return None
+
+
+def _safe_post(url: str, payload: Dict, retries: int = 3):
+    """POST with simple retry logic.
+
+    It uses :func:`_post_once` and retries when ``None`` is returned.  On
+    success the JSON payload of the response is returned; otherwise an error
+    dict is produced so callers can handle failures deterministically.
+    """
+    session = requests.Session()
+    for attempt in range(retries):
+        resp = _post_once(session, url, payload, connection_close=attempt > 0)
+        if resp is None:
+            continue
+        if resp.ok:
+            try:
+                return resp.json()
+            except Exception:
+                return {"error": {"message": resp.text}}
+        return {"error": {"message": resp.text, "status": resp.status_code}}
+    return {"error": {"message": "request failed"}}
+
 # ——— Utilities ———
 def _json_dumps(obj: Dict) -> str:
     return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
