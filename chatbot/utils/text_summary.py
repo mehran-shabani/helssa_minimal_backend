@@ -1,14 +1,13 @@
 # chatbot/utils/text_summary.py
-"""
-ابزارهای کمکی برای تجمیع مکالمات و خلاصه/بازنویسی با API تاک‌بات.
-"""
+# خلاصه مکالمات با OpenAI-compatible SDK (GapGPT) - مدل پیش‌فرض: o3-mini
 from __future__ import annotations
 
+import json
 import logging
+import re
 from datetime import timedelta
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
-import requests
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -17,177 +16,197 @@ from chatbot.models import ChatSession, ChatSummary
 
 logger = logging.getLogger(__name__)
 
-# پیکربندی API بازنویسی
-REWRITER_ENDPOINT = "https://api.talkbot.ir/v1/text/rewriter/REQ"
-REWRITER_MODEL = "zarin-1.0"
-API_TIMEOUT = 45  # ثانیه
+try:
+    from openai import OpenAI
+except Exception as exc:
+    OpenAI = None
+    logger.error("openai library not installed: %s", exc)
 
-# زمان زنده‌بودن خلاصه (TTL) بر حسب دقیقه
-GLOBAL_TTL_MIN = 60 * 6   # ۶ ساعت
-SESSION_TTL_MIN = 30      # ۳۰ دقیقه
+CLIENT = None
+def _get_client():
+    global CLIENT
+    if CLIENT is None:
+        if not OpenAI:
+            raise RuntimeError("openai library missing. `pip install openai`")
+        base_url = getattr(settings, "GAPGPT_BASE_URL", "https://api.gapgpt.app/v1")
+        api_key  = getattr(settings, "GAPGPT_API_KEY", None)
+        if not api_key:
+            raise RuntimeError("GAPGPT_API_KEY is missing in settings/env.")
+        CLIENT = OpenAI(base_url=base_url, api_key=api_key)
+    return CLIENT
 
-def _headers() -> Dict[str, str]:
-    return {
-        "Authorization": f"Bearer {settings.TALKBOT_API_KEY}",
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
+# TTL
+GLOBAL_TTL_MIN = 60 * 6
+SESSION_TTL_MIN = 30
+
+RAW_CLIP_CHARS = 50_000
+SUMMARY_CLIP_CHARS = int(getattr(settings, "SUMMARY_CLIP_CHARS", 4_000))
+
+_JSON_BLOCK_RE = re.compile(r"\{(?:[^{}]|(?:\{[^{}]*\}))*\}", re.S)
+
+def _ensure_text(x) -> str:
+    if x is None:
+        return ""
+    if isinstance(x, str):
+        return x
+    try:
+        return json.dumps(x, ensure_ascii=False)
+    except Exception:
+        return str(x)
+
+def _clip(s: str, n: int) -> str:
+    s = _ensure_text(s).strip()
+    if len(s) <= n:
+        return s
+    return s[: max(0, n - 1)] + "…"
 
 def _serialize_conversation(sessions: List[ChatSession]) -> str:
-    """
-    تمام پیام‌های جلسات داده‌شده را به متن خط‌به‌خط تبدیل می‌کند.
-    """
     lines: List[str] = []
     for s in sessions:
-        for m in s.messages.select_related("user"):
-            role = "USER" if not m.is_bot else "BOT "
+        for m in s.messages.select_related("user").order_by("created_at"):
+            role = "USER" if not m.is_bot else "ASSISTANT"
             ts = m.created_at.strftime("%Y-%m-%d %H:%M")
             lines.append(f"[{ts}] {role}: {m.message}")
-    return "\n".join(lines)
+    return _clip("\n".join(lines), RAW_CLIP_CHARS)
 
-MIN_CHARS = 100
-MAX_CHARS = 20_000
-PADDING_TOKEN = "‌"  # کاراکتر نیم‌فاصله (Zero-Width Non-Joiner)؛ در خروجی قابل‌مشاهده نیست.
-
-def _call_rewriter_api(text: str, *, model: str = REWRITER_MODEL) -> str:
-    """
-    فراخوانی ایمن تاک‌بات با پَد کردن متن‌های کوتاه:
-    اگر متن < 100 کاراکتر باشد، با کاراکتر نیم‌فاصله پُر می‌شود تا طول دقیقاً به 100 برسد.
-    پس از دریافت پاسخ، Padding حذف می‌شود.
-    در خطاهای شبکه یا پاسخ غیرمنتظره، متن خام برگردانده می‌شود و خطا لاگ می‌گردد.
-    """
-    import requests
-
-    # ───── 1) آماده‌سازی متن ─────
-    original_len = len(text)
-    if original_len < MIN_CHARS:
-        padding_needed = MIN_CHARS - original_len
-        text += PADDING_TOKEN * padding_needed  # افزودن پَد
-
-    if len(text) > MAX_CHARS:
-        text = text[:MAX_CHARS]  # برشِ ایمن
-
-    # ───── 2) فراخوانی API تاک‌بات ─────
-    data = {
-        "text": text,
-        "model": model,
-        "summary": "true",
-        "translate": "none",
-        "style": "8",            # رسمی
-        "paraphrase-type": "8",  # تغییر هوشمند
-        "textlanguage": "fa",
-        "half-space": "0",
-    }
+def _extract_text_from_resp(resp) -> str:
     try:
-        resp = requests.post(
-            REWRITER_ENDPOINT,
-            headers=_headers(),
-            data=data,
-            timeout=API_TIMEOUT,
-        )
-        resp.raise_for_status()                          # خطاهای HTTP
+        # openai-python SDK object
+        return (resp.choices[0].message.content or "").strip()
+    except Exception:
+        return ""
 
-        payload = resp.json()
-        rewritten_text = payload.get("result", {}).get("text")
-
-        if not rewritten_text:
-            logger.error("Unexpected Rewriter response: %s", payload)
-            return text.strip()
-
-        # ───── 3) حذف Padding ─────
-        if original_len < MIN_CHARS:
-            rewritten_text = rewritten_text[:original_len].rstrip()
-
-        return rewritten_text
-
-    except Exception as exc:
-        logger.exception("Rewriter API failed: %s", exc)
-        return text.strip()
+def _find_json_in_text(text: str) -> Optional[dict]:
+    try:
+        m = _JSON_BLOCK_RE.search(text or "")
+        if not m:
+            return None
+        return json.loads(m.group(0))
+    except Exception:
+        return None
 
 def _simple_medical_extract(text: str) -> Dict:
-    """
-    استخراج ساده بخش‌های پزشکی از متن بازنویسی‌شده.
-    """
-    sections = {
-        "history": [], "symptoms": [], "medications": [], "recommendations": []
-    }
-    for line in text.splitlines():
+    sections = {"history": [], "symptoms": [], "medications": [], "recommendations": []}
+    for line in (text or "").splitlines():
         t = line.strip()
         if any(k in t for k in ("سابقه", "تاریخچه")):
-            sections["history"].append(t)  # pragma: no cover
-        if any(k in t for k in ("دارو", "mg", "قرص")):
+            sections["history"].append(t)
+        if any(k in t for k in ("دارو", "mg", "میلی‌گرم", "قرص")):
             sections["medications"].append(t)
-        if any(k in t for k in ("درد", "تب", "سرفه")):
+        if any(k in t for k in ("درد", "تب", "سرفه", "تهوع", "استفراغ")):
             sections["symptoms"].append(t)
-        if any(k in t for k in ("پیشنهاد", "توصیه", "درمان")):
+        if any(k in t for k in ("پیشنهاد", "توصیه", "درمان", "ارجاع")):
             sections["recommendations"].append(t)
     return {k: "\n".join(v) for k, v in sections.items()}
 
-def summarize_user_chats(user, *, limit_sessions: int | None = None) -> ChatSummary:
-    """
-    جمع‌آوری همه یا n جلسهٔ آخر کاربر و ایجاد خلاصهٔ جامع.
-    """
-    qs = ChatSession.objects.filter(user=user).order_by("-started_at")
-    if limit_sessions:
-        qs = qs[:limit_sessions]  # pragma: no cover
-    sessions = list(qs)
-    if not sessions:
-        raise ValueError("No chat sessions found for user.")
-    raw = _serialize_conversation(sessions)
-    rewritten = _call_rewriter_api(raw)
-    structured = _simple_medical_extract(rewritten)
-    with transaction.atomic():
-        summary = ChatSummary.objects.create(
-            user=user,
-            session=None if len(sessions) > 1 else sessions[0],
-            model_used=REWRITER_MODEL,
-            raw_text=raw,
-            rewritten_text=rewritten,
-            structured_json=structured,
+def _build_summary_prompt() -> str:
+    return (
+        "تو یک پزشک باتجربه هستی. مکالمهٔ بیمار/دستیار را خلاصه کن.\n"
+        "- فارسی، دقیق، کوتاه.\n"
+        "- در پایان فقط یک JSON با کلیدهای history/symptoms/medications/recommendations بده.\n"
+        "- اگر داده‌ای نیست، مقدار هر کلید خالی باشد. توضیح اضافه نده."
+    )
+
+def _call_summarizer(text: str) -> Tuple[str, Dict]:
+    model = getattr(settings, "SUMMARY_MODEL_NAME", "o3-mini")
+    max_tokens = int(getattr(settings, "SUMMARY_MAX_TOKENS", 900))
+    try:
+        client = _get_client()
+        system_prompt = _build_summary_prompt()
+        user_content = f"Conversation:\n{text}"
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            max_tokens=max_tokens,
+            temperature=0.2,
+            top_p=0.9,
         )
-    return summary
+        content = _extract_text_from_resp(resp)
+        if not content:
+            logger.warning("Summarizer empty content.")
+            return _clip(text, SUMMARY_CLIP_CHARS), _simple_medical_extract(text)
+        js = _find_json_in_text(content) or _simple_medical_extract(content)
+        return _clip(content, SUMMARY_CLIP_CHARS), js
+    except Exception as exc:
+        logger.exception("Summarizer failed: %s", exc)
+        return _clip(text, SUMMARY_CLIP_CHARS), _simple_medical_extract(text)
 
 def _is_expired(obj: ChatSummary, ttl_minutes: int) -> bool:
     return (timezone.now() - obj.updated_at) > timedelta(minutes=ttl_minutes)
 
+def _dedup_keep_latest(user, session) -> Optional[ChatSummary]:
+    qs = ChatSummary.objects.filter(user=user, session=session).order_by("-updated_at")
+    items = list(qs)
+    if not items:
+        return None
+    keep = items[0]
+    if len(items) > 1:
+        ChatSummary.objects.filter(id__in=[x.id for x in items[1:]]).delete()
+        logger.warning("Dedup summaries for user=%s session=%s kept=%s deleted=%s",
+                       user.id, getattr(session, "id", None), keep.id, [x.id for x in items[1:]])
+    return keep
+
+# -------- Public API --------
+def summarize_user_chats(user, *, limit_sessions: int | None = None) -> ChatSummary:
+    qs = ChatSession.objects.filter(user=user).order_by("-started_at")
+    if limit_sessions:
+        qs = qs[:limit_sessions]
+    sessions = list(qs)
+    if not sessions:
+        raise ValueError("No chat sessions found for user.")
+
+    raw = _serialize_conversation(sessions)
+    summary_text, json_struct = _call_summarizer(raw)
+
+    with transaction.atomic():
+        keep = _dedup_keep_latest(user, None)
+        if keep:
+            keep.model_used = getattr(settings, "SUMMARY_MODEL_NAME", "o3-mini")
+            keep.raw_text = raw
+            keep.rewritten_text = summary_text
+            keep.structured_json = json_struct
+            keep.save(update_fields=["model_used","raw_text","rewritten_text","structured_json","updated_at"])
+            return keep
+        return ChatSummary.objects.create(
+            user=user,
+            session=None,
+            model_used=getattr(settings, "SUMMARY_MODEL_NAME", "o3-mini"),
+            raw_text=raw,
+            rewritten_text=summary_text,
+            structured_json=json_struct,
+        )
+
 def get_or_create_global_summary(user) -> ChatSummary:
-    """
-    بازگرداندن یا تجدید خلاصهٔ جامع (cross-session).
-    """
-    summary = (
-        ChatSummary.objects
-        .filter(user=user, session__isnull=True)
-        .order_by("-updated_at")
-        .first()
-    )
-    if summary and not _is_expired(summary, GLOBAL_TTL_MIN):
-        return summary  # pragma: no cover
+    keep = _dedup_keep_latest(user, None)
+    if keep and not _is_expired(keep, GLOBAL_TTL_MIN):
+        return keep
     return summarize_user_chats(user)
 
-def get_or_update_session_summary(session) -> ChatSummary:  # pragma: no cover
-    """
-    بازگرداندن یا تجدید خلاصهٔ مکالمات یک جلسه.
-    """
-    summary = session.summaries.order_by("-updated_at").first()
-    if summary and not _is_expired(summary, SESSION_TTL_MIN):
-        return summary  # pragma: no cover
-    raw = _serialize_conversation([session])
-    rewritten = _call_rewriter_api(raw)
-    structured = _simple_medical_extract(rewritten)
+def get_or_update_session_summary(session) -> ChatSummary:
+    user = session.user
     with transaction.atomic():
-        if summary:
-            summary.raw_text = raw
-            summary.rewritten_text = rewritten
-            summary.structured_json = structured
-            summary.save(update_fields=[
-                "raw_text", "rewritten_text", "structured_json", "updated_at"
-            ])
-        else:  # pragma: no cover
-            summary = ChatSummary.objects.create(
-                user=session.user,
-                session=session,
-                model_used=REWRITER_MODEL,
-                raw_text=raw,
-                rewritten_text=rewritten,
-                structured_json=structured,
-            )
-    return summary
+        keep = _dedup_keep_latest(user, session)
+        if keep and not _is_expired(keep, SESSION_TTL_MIN):
+            return keep
+
+        raw = _serialize_conversation([session])
+        summary_text, json_struct = _call_summarizer(raw)
+
+        if keep:
+            keep.model_used = getattr(settings, "SUMMARY_MODEL_NAME", "o3-mini")
+            keep.raw_text = raw
+            keep.rewritten_text = summary_text
+            keep.structured_json = json_struct
+            keep.save(update_fields=["model_used","raw_text","rewritten_text","structured_json","updated_at"])
+            return keep
+        return ChatSummary.objects.create(
+            user=user,
+            session=session,
+            model_used=getattr(settings, "SUMMARY_MODEL_NAME", "o3-mini"),
+            raw_text=raw,
+            rewritten_text=summary_text,
+            structured_json=json_struct,
+        )
