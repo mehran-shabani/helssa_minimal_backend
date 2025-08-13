@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.core.management import call_command
 
 from chatbot.permissions import HasActiveSubscription
-from sub.models import SubscriptionPlan, Subscription
+from sub.models import Plan, Subscription
 from chatbot.models import ChatSession
 
 User = get_user_model()
@@ -16,8 +16,13 @@ User = get_user_model()
 def test_permission_and_view(monkeypatch):
     user = User.objects.create_user(username="u2", password="p", auth_code="654321", phone_number="0912")
 
-    plan = SubscriptionPlan.objects.create(name="basic", days=1, price=0)
-    Subscription.objects.create(user=user, plan=plan, end_date=timezone.now() + timezone.timedelta(days=1))
+    plan = Plan.objects.create(code="basic", name="Basic")
+    Subscription.objects.create(
+        user=user,
+        plan=plan,
+        started_at=timezone.now(),
+        expires_at=timezone.now() + timezone.timedelta(days=1),
+    )
 
     perm = HasActiveSubscription()
     request = type("obj", (), {"user": user})()
