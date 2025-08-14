@@ -3,14 +3,16 @@ name: Django CI & Release
 on:
   push:
     branches: [ new_branch ]
-    # از لوپ جلوگیری می‌کنیم؛ تغییرات فقط روی فایل VERSION CI رو تریگر نکنه
     paths-ignore:
       - 'VERSION'
   pull_request:
     branches: [ new_branch ]
 
+# ⬅️ مهم: برای attestation باید OIDC داشته باشیم
 permissions:
-  contents: write    # برای ساخت تگ و ریلیز لازم است
+  contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -23,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # برای دسترسی به تگ‌ها لازم است
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -44,6 +46,12 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/new_branch'
     runs-on: ubuntu-latest
 
+    # اگر خواستی می‌تونی فقط برای این جاب پرمیشن بذاری:
+    # permissions:
+    #   contents: write
+    #   id-token: write
+    #   attestations: write
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,20 +64,11 @@ jobs:
           set -euo pipefail
 
           BASELINE="1.2.1"
-
-          # آخرین تگ نسخه‌ای را پیدا کن
           LAST_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "")
-          if [[ -z "$LAST_TAG" ]]; then
-            PREV="1.2.0"
-          else
-            PREV="${LAST_TAG#v}"
-          fi
+          if [[ -z "$LAST_TAG" ]]; then PREV="1.2.0"; else PREV="${LAST_TAG#v}"; fi
 
-          # تابع مقایسه‌ی سمور
           semver_cmp () {
-            local IFS=.
-            local i ver1=($1) ver2=($2)
-            # پر کردن با صفر برای طول برابر
+            local IFS=. i ver1=($1) ver2=($2)
             for ((i=${#ver1[@]}; i<3; i++)); do ver1[i]=0; done
             for ((i=${#ver2[@]}; i<3; i++)); do ver2[i]=0; done
             for ((i=0; i<3; i++)); do
@@ -79,19 +78,15 @@ jobs:
             echo 0
           }
 
-          # اگر PREV < BASELINE، شروع را از 1.2.0 قرار می‌دهیم تا bump بعدی >=1.2.1 شود
           if [[ "$(semver_cmp "$PREV" "$BASELINE")" -lt 0 ]]; then
             PREV="1.2.0"
-            LAST_TAG=""  # لاگ از ابتدا
+            LAST_TAG=""
           fi
 
           COMMITS_RANGE="HEAD"
-          if [[ -n "$LAST_TAG" ]]; then
-            COMMITS_RANGE="${LAST_TAG}..HEAD"
-          fi
+          if [[ -n "$LAST_TAG" ]]; then COMMITS_RANGE="${LAST_TAG}..HEAD"; fi
           COMMITS=$(git log --pretty=format:%s%n%b $COMMITS_RANGE || true)
 
-          # نوع bump
           BUMP="patch"
           if echo "$COMMITS" | grep -qiE 'BREAKING CHANGE|!:'; then
             BUMP="major"
@@ -105,16 +100,13 @@ jobs:
 
           IFS='.' read -r MA MI PA <<< "$PREV"
           MA=${MA:-0}; MI=${MI:-0}; PA=${PA:-0}
-
           case "$BUMP" in
             major) MA=$((MA+1)); MI=0; PA=0 ;;
             minor) MI=$((MI+1)); PA=0 ;;
             patch) PA=$((PA+1)) ;;
           esac
-
           NEW_VERSION="${MA}.${MI}.${PA}"
 
-          # اطمینان از >= 1.2.1
           if [[ "$(semver_cmp "$NEW_VERSION" "$BASELINE")" -lt 0 ]]; then
             NEW_VERSION="$BASELINE"
           fi
@@ -124,14 +116,12 @@ jobs:
           echo "new_version=${NEW_VERSION}" >> $GITHUB_OUTPUT
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
-          # اگر تگ وجود دارد، Skip
           if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-          # تولید فایل VERSION برای آرشیو/اتست
           echo -n "${NEW_VERSION}" > VERSION
 
       - name: Upload VERSION artifact
@@ -140,8 +130,19 @@ jobs:
           name: VERSION-${{ steps.version.outputs.new_version }}
           path: VERSION
 
+      # گارد: اگر OIDC نباشه، Attestation رو اسکیپ کن
+      - name: Check OIDC availability
+        id: oidc
+        shell: bash
+        run: |
+          if [[ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]]; then
+            echo "available=true" >> $GITHUB_OUTPUT
+          else
+            echo "available=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Attest Build Provenance
-        if: steps.version.outputs.exists == 'false'
+        if: steps.version.outputs.exists == 'false' && steps.oidc.outputs.available == 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: VERSION
