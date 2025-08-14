@@ -21,3 +21,4 @@ pytest-django
 gunicorn
 mysqlclient
 openai
+celery
