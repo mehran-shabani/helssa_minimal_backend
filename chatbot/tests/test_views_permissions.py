@@ -16,7 +16,7 @@ User = get_user_model()
 def test_permission_and_view(monkeypatch):
     user = User.objects.create_user(username="u2", password="p", auth_code="654321", phone_number="0912")
 
-    plan = Plan.objects.create(code="basic", name="Basic")
+    plan = Plan.objects.create(code="basic", name="Basic", allow_vision=True, max_images=4)
     Subscription.objects.create(
         user=user,
         plan=plan,
@@ -37,7 +37,7 @@ def test_permission_and_view(monkeypatch):
         "images": ["data:image/jpeg;base64,AAAA"],
         "image_urls": ["http://example.com/img.jpg"],
     }
-    resp = client.post("/chat/msg/", data, format="json")
+    resp = client.post("/api/chat/msg/", data, format="json")
     assert resp.status_code == 200 and resp.data["answer"] == "ok"
 
 

@@ -15,12 +15,17 @@ class DummySummary:
 def test_generate_gpt_response_basic(monkeypatch):
     user = User.objects.create_user(username="u4", password="p", auth_code="888888", phone_number="0914")
 
-    monkeypatch.setattr(gr, "_safe_post", lambda *a, **kw: {"choices": [{"message": {"content": "vision"}}]})
+    monkeypatch.setattr(gr, "agent_chat", lambda **k: "vision")
     monkeypatch.setattr(gr, "clean_bot_message", lambda x: x)
     monkeypatch.setattr(gr, "get_or_create_global_summary", lambda u: DummySummary())
     monkeypatch.setattr(gr, "get_or_update_session_summary", lambda s: DummySummary())
 
-    out = generate_gpt_response(user, "سلام", image_b64_list=["data:image/jpeg;base64,AAAA"], new_session=True)
+    out = generate_gpt_response(
+        user,
+        "سلام",
+        image_b64_list=["data:image/jpeg;base64,AAAA"],
+        new_session=True,
+    )
     assert out == "vision"
 
 
