@@ -45,7 +45,7 @@ def _post_once(session, url: str, payload: Dict, connection_close: bool = False)
             headers=headers,
             timeout=(TIMEOUT_CONNECT, TIMEOUT_READ),
         )
-    except Exception:
+    except requests.exceptions.RequestException:
         return None
 
 
