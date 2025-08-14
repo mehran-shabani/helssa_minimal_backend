@@ -61,6 +61,141 @@ def tool_get_profile(args, user_id, session: ChatSession):
 def tool_update_profile(args, user_id, session: ChatSession):
     return {"ok": True, "saved": args or {}}
 
+# -------------------- Visit creation tool --------------------
+from django.db import transaction
+from chatbot.utils import text_summary as ts
+from telemedicine.models import Visit, BoxMoney
+
+def _map_symptoms_to_visit_fields(text: str) -> Dict[str, str]:
+    t = (text or "").lower()
+    def has_any(words: List[str]) -> bool:
+        return any(w in t for w in words)
+    detected = False
+    general = ""
+    if has_any(["تب", "fever"]):
+        general = "fever"; detected = True
+    elif has_any(["خستگی", "fatigue"]):
+        general = "fatigue"; detected = True
+    elif has_any(["کاهش وزن", "weight loss"]):
+        general = "weight_loss"; detected = True
+    elif has_any(["بی‌اشتهایی", "کاهش اشتها", "appetite"]):
+        general = "appetite_loss"; detected = True
+    elif has_any(["تعریق شبانه"]):
+        general = "night_sweats"; detected = True
+    # اگر هیچ‌کدام از عمومی‌ها match نشد، بعداً fallback می‌دهیم
+    neuro = ""
+    if has_any(["سردرد", "migraine", "headache"]):
+        neuro = "headache"; detected = True
+    elif has_any(["سرگیجه", "dizzy"]):
+        neuro = "dizziness"; detected = True
+    elif has_any(["تشنج", "seizure"]):
+        neuro = "seizures"; detected = True
+    elif has_any(["بی‌حسی", "numb"]):
+        neuro = "numbness"; detected = True
+    elif has_any(["ضعف"]):
+        neuro = "weakness"; detected = True
+    cardio = ""
+    if has_any(["قفسه سینه", "chest pain"]):
+        cardio = "chest_pain"; detected = True
+    elif has_any(["تپش", "palpitation"]):
+        cardio = "palpitations"; detected = True
+    elif has_any(["فشار خون", "hypertension"]):
+        cardio = "high_blood_pressure"; detected = True
+    elif has_any(["غش", "بیهوشی", "faint"]):
+        cardio = "fainting"; detected = True
+    gi = ""
+    if has_any(["تهوع", "nausea"]):
+        gi = "nausea"; detected = True
+    elif has_any(["استفراغ", "vomit"]):
+        gi = "vomiting"; detected = True
+    elif has_any(["اسهال", "diarrhea"]):
+        gi = "diarrhea"; detected = True
+    elif has_any(["یبوست", "constipation"]):
+        gi = "constipation"; detected = True
+    elif has_any(["درد شکم", "abdominal pain"]):
+        gi = "abdominal_pain"; detected = True
+    resp = ""
+    if has_any(["سرفه", "cough"]):
+        resp = "cough"; detected = True
+    elif has_any(["تنگی نفس", "shortness of breath"]):
+        resp = "shortness_of_breath"; detected = True
+    elif has_any(["خس خس", "wheeze"]):
+        resp = "wheezing"; detected = True
+    elif has_any(["گلودرد", "sore throat"]):
+        resp = "sore_throat"; detected = True
+    urgency = "online_consultation"
+    if has_any(["اعتیاد", "戒", "ترک"]):
+        urgency = "addiction"; detected = True
+    elif has_any(["رژیم", "diet"]):
+        urgency = "diet"; detected = True
+    elif has_any(["نسخه", "renew", "داروهای پر مصرف"]):
+        urgency = "prescription"; detected = True
+    return {
+        "detected": bool(detected),
+        "urgency": urgency,
+        "general_symptoms": general or "general_pain",
+        "neurological_symptoms": neuro,
+        "cardiovascular_symptoms": cardio,
+        "gastrointestinal_symptoms": gi,
+        "respiratory_symptoms": resp,
+    }
+
+@register_tool(
+    "create_visit_from_summary",
+    "ایجاد ویزیت خودکار بر اساس شرح‌حال مکالمهٔ جاری. فقط وقتی اجرا می‌شود که بتوان علائم را تشخیص داد؛ سپس هزینه از کیف‌پول کسر و ویزیت ثبت می‌شود.",
+    {"type":"object","properties":{
+        "name":{"type":"string","description":"عنوان اختیاری ویزیت"},
+        "notes":{"type":"string","description":"یادداشت اختیاری برای توضیحات"},
+        "max_cost":{"type":"integer","description":"حداکثر هزینهٔ مجاز برای کسر از کیف‌پول","default":398000}
+    }}
+)
+def tool_create_visit_from_summary(args, user_id, session: ChatSession):
+    name = (args or {}).get("name") or "ویزیت خودکار"
+    notes = (args or {}).get("notes") or ""
+    max_cost = int((args or {}).get("max_cost") or 398000)
+    try:
+        summary = ts.get_or_update_session_summary(session)
+        text = (getattr(summary, "rewritten_text", "") or "").strip()
+        fields = _map_symptoms_to_visit_fields(text)
+        if not fields.get("detected"):
+            return {"ok": False, "error": "insufficient_data"}
+        with transaction.atomic():
+            # کیف پول در سیگنال ایجاد کاربر ساخته می‌شود؛ در غیر این صورت get_or_create
+            box, _ = BoxMoney.objects.select_for_update().get_or_create(user_id=user_id, defaults={"amount": 0})
+            if box.amount < max_cost:
+                return {"ok": False, "error": "insufficient_funds", "balance": box.amount, "needed": max_cost}
+            box.amount -= max_cost
+            box.save(update_fields=["amount"])
+            v = Visit.objects.create(
+                user_id=user_id,
+                name=name,
+                urgency=fields["urgency"],
+                general_symptoms=fields["general_symptoms"],
+                neurological_symptoms=fields["neurological_symptoms"],
+                cardiovascular_symptoms=fields["cardiovascular_symptoms"],
+                gastrointestinal_symptoms=fields["gastrointestinal_symptoms"],
+                respiratory_symptoms=fields["respiratory_symptoms"],
+                description=(text[:900] + ("\n\n" + notes if notes else ""))[:1200],
+            )
+            return {
+                "ok": True,
+                "visit_id": v.id,
+                "cost_deducted": max_cost,
+                "visit": {
+                    "name": v.name,
+                    "urgency": v.urgency,
+                    "general_symptoms": v.general_symptoms,
+                    "neurological_symptoms": v.neurological_symptoms,
+                    "cardiovascular_symptoms": v.cardiovascular_symptoms,
+                    "gastrointestinal_symptoms": v.gastrointestinal_symptoms,
+                    "respiratory_symptoms": v.respiratory_symptoms,
+                    "description": v.description,
+                },
+            }
+    except Exception as e:
+        logger.exception("create_visit_from_summary failed: %s", e)
+        return {"ok": False, "error": "internal_error", "detail": str(e)}
+
 # -------------------- Helpers --------------------
 def _extract_text(msg: Dict) -> str:
     if not isinstance(msg, dict):

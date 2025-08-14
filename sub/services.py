@@ -86,6 +86,7 @@ def compute_caps_for_request(user, sub: Subscription, request) -> Dict:
     elif plan.code == "starter":
         tool_whitelist = ["triage_level", "get_patient_profile", "update_patient_profile"]
     else:
+        # پلن‌های بالاتر اجازهٔ همهٔ ابزارها را دارند (شامل create_visit_from_summary)
         tool_whitelist = None  # یعنی همهٔ ابزارهای رجیستر
 
     # تخصص
