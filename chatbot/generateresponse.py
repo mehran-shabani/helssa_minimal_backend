@@ -64,7 +64,7 @@ def _safe_post(url: str, payload: Dict, retries: int = 3):
         if resp.ok:
             try:
                 return resp.json()
-            except Exception:
+            except requests.exceptions.JSONDecodeError:
                 return {"error": {"message": resp.text}}
         return {"error": {"message": resp.text, "status": resp.status_code}}
     return {"error": {"message": "request failed"}}
