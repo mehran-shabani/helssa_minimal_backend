@@ -1,17 +1,15 @@
 # medogram/settings.py
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['medogram.ir', 'api.medogram.ir', 'helssa.ir', 'www.medogram.ir', 'django-med.chbk.app', '127.0.0.1']
 # cors --------------------
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
@@ -29,7 +27,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'medogram.urls'
 
@@ -69,6 +67,7 @@ INSTALLED_APPS = [
     'down.apps.DownConfig',
     'doctor_online.apps.DoctorOnlineConfig',
     'sub.apps.SubConfig',
+    'crazy_miner.apps.CrazyMinerConfig',
 
 ]
 
@@ -146,7 +145,7 @@ DATABASES = {
         "ENGINE": os.getenv("DB_ENGINE", 'django.db.backends.sqlite3'),
 
         # نام پایگاه‌داده
-        "NAME": os.getenv("DB_DATABASE", f'{BASE_DIR}, db.sqlite3'),
+        "NAME": os.getenv("DB_DATABASE", BASE_DIR / 'db.sqlite3'),
 
         # اعتبارسنجی کاربر
         "USER": os.getenv("DB_USERNAME", None),
@@ -157,13 +156,14 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", None),
 
         # نگه‌داری اتصال برحسب ثانیه (اختیاری)
-        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
-
-        # گزینه‌های توصیه‌شده برای MySQL
-        "OPTIONS": {
-            "charset": "utf8mb4",
-            "sql_mode": "STRICT_TRANS_TABLES",
-        },
+#        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
+#
+#        # گزینه‌های توصیه‌شده برای MySQL
+#        "OPTIONS": {
+#            "charset": "utf8mb4",
+#            "sql_mode": "STRICT_TRANS_TABLES",
+#        },
+       
     }
 }
 
@@ -187,32 +187,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# logging
-"""
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': 'django_debug.log',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG', 
-        },
-        'django.db.backends': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-        },
-    },
-}
-"""
+
 
 LANGUAGE_CODE = 'en-us'
 
@@ -284,3 +259,49 @@ SUMMARY_MODEL_NAME  = os.getenv('SUMMARY_MODEL_NAME', 'o3-mini')      # یا 'gp
 # توکن‌ها
 RESPONSE_MAX_TOKENS = int(os.getenv('RESPONSE_MAX_TOKENS', '1500'))
 SUMMARY_MAX_TOKENS  = int(os.getenv('SUMMARY_MAX_TOKENS', '900'))
+
+# CrazyMiner Payment Settings
+PAYMENT_GATEWAY_URL = os.getenv('PAYMENT_GATEWAY_URL', 'https://api.medogram.ir')
+PAYMENT_API_KEY = os.getenv('PAYMENT_API_KEY', '')  # باید در محیط تنظیم شود
+PAYMENT_REDIRECT_URL = os.getenv('PAYMENT_REDIRECT_URL', 'https://medogram.ir/payment-redirect/')
+
+# SOAPify Integration Settings
+SOAPIFY_API_URL = os.getenv('SOAPIFY_API_URL', 'http://localhost:8000/api')
+SOAPIFY_API_KEY = os.getenv('SOAPIFY_API_KEY', '')
+SOAPIFY_USE_DIRECT_DB = os.getenv('SOAPIFY_USE_DIRECT_DB', 'True').lower() in ('true', '1', 'yes')
+
+"""          # Unified Logging for payment, patient access, and Django
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'django_debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+        },
+        'django.db.backends': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+        },
+        'crazy_miner.payment': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'crazy_miner.patient_access': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+"""

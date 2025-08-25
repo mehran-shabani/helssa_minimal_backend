@@ -19,3 +19,8 @@ pytest-cov>=4.1
 pytest-django>=4.8
 gunicorn>=21.2
 mysqlclient>=2.2.7,<3
+psycopg2>=2.9.7,<3
+redis>=4.6,<5
+celery>=5.2,<6
+cryptography==44.0.1
+python-dotenv>=1.0

@@ -13,10 +13,7 @@ User = get_user_model()
 
 @receiver(post_save, sender=User)
 def grant_welcome_subscription(sender, instance: User, created: bool, **kwargs):
-    """
-    به محض ساخت کاربر جدید، اگر اشتراک ندارد، یک اشتراک ۱۰روزهٔ هدیه بساز.
-    plan=None تا به عنوان هدیهٔ ورود شناخته شود.
-    """
+  
     if not created:
         return
 
@@ -24,13 +21,8 @@ def grant_welcome_subscription(sender, instance: User, created: bool, **kwargs):
     if hasattr(instance, "subscription"):
         return
 
-    now = timezone.now()
-    Subscription.objects.create(
-        user=instance,
-        plan=None,
-        start_date=now,                     # auto_now_add نیز مقداردهی می‌کند؛ برای صراحت ست شده است.
-        end_date=now + timedelta(days=10),
-    )
+    plan = SubscriptionPlan.objects.get(id=5)
+    Subscription.buy_plan(instance, plan)
 
 
 @receiver(post_migrate)
