@@ -28,8 +28,6 @@ urlpatterns = [
                   path('certificate/', include('certificate.roots')),
                   path('down/', include('down.roots')),
                   path('doc/', include('doctor_online.roots')),
-                  path('sub/', include('sub.roots')),
-                  path('crazyminer/', include('crazy_miner.roots')),
-                  
+                  path('sub/', include('sub.roots'))
 
                 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

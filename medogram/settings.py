@@ -1,15 +1,18 @@
 # medogram/settings.py
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+from celery.schedules import crontab
 
+load_dotenv()
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', default='django-insecure-change-me')
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['medogram.ir', 'api.medogram.ir', 'helssa.ir', 'www.medogram.ir', 'django-med.chbk.app', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 # cors --------------------
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
@@ -17,6 +20,7 @@ CORS_ALLOWED_ORIGINS = [
     'https://medogram.ir',
     'https://helssa.ir',
     'https://django-med.chbk.app',
+    'https://api.medogram.ir',
 ]
 
 CORS_ALLOW_HEADERS = [
@@ -27,7 +31,7 @@ CORS_ALLOW_HEADERS = [
 ]
 
 
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 ROOT_URLCONF = 'medogram.urls'
 
@@ -39,13 +43,23 @@ CSRF_TRUSTED_ORIGINS = [
     "https://helssa.ir",
     "https://www.helssa.ir",
     "https://api.medogram.ir",
-    "https://django-med.chbk.app"
+    "https://django-med.chbk.app",
+    "http://45.135.241.131",   # ✅ یا https:// بسته به SSL سرور
+    "https://45.135.241.131",
 ]
 
 # فقط در صورت نیاز به به‌اشتراک‌گذاری کوکی‌ها بین دامنه‌ها:
 CSRF_COOKIE_DOMAIN = ".medogram.ir"  # اگر تمام زیر دامنه‌ها باید به CSRF cookie دسترسی داشته باشند
 CSRF_COOKIE_SAMESITE = "None"        # برای پشتیبانی از cross-origin
 CSRF_COOKIE_SECURE = True            # حتماً فعال باشد چون HTTPS دارید
+
+# اگر پشت پروکسی/لودبالانسر HTTPS هستی (رایج روی هاست‌ها)
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+# اگر سایتت روی HTTPS است:
+SESSION_COOKIE_SECURE = True
+
 
 
 INSTALLED_APPS = [
@@ -67,9 +81,10 @@ INSTALLED_APPS = [
     'down.apps.DownConfig',
     'doctor_online.apps.DoctorOnlineConfig',
     'sub.apps.SubConfig',
-    'crazy_miner.apps.CrazyMinerConfig',
+
 
 ]
+
 
 
 
@@ -145,8 +160,7 @@ DATABASES = {
         "ENGINE": os.getenv("DB_ENGINE", 'django.db.backends.sqlite3'),
 
         # نام پایگاه‌داده
-        "NAME": os.getenv("DB_DATABASE", BASE_DIR / 'db.sqlite3'),
-
+        "NAME": os.getenv("DB_DATABASE", str(BASE_DIR / 'db.sqlite3')),
         # اعتبارسنجی کاربر
         "USER": os.getenv("DB_USERNAME", None),
         "PASSWORD": os.getenv("DB_PASSWORD", None),
@@ -156,14 +170,13 @@ DATABASES = {
         "PORT": os.getenv("DB_PORT", None),
 
         # نگه‌داری اتصال برحسب ثانیه (اختیاری)
-#        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
-#
-#        # گزینه‌های توصیه‌شده برای MySQL
-#        "OPTIONS": {
-#            "charset": "utf8mb4",
-#            "sql_mode": "STRICT_TRANS_TABLES",
-#        },
-       
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "0")),
+
+        # گزینه‌های توصیه‌شده برای MySQL
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "sql_mode": "STRICT_TRANS_TABLES",
+        },
     }
 }
 
@@ -187,15 +200,41 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# logging
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'django_debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG', 
+        },
+        'django.db.backends': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
 
 
 LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
+USE_TZ = True
 
 USE_I18N = True
 
-USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'static'
@@ -233,21 +272,7 @@ TALKBOT_BASE_URL = os.getenv('TALKBOT_BASE_URL', default='https://api.talkbot.ir
 BITPAY_API_KEY = os.getenv('BITPAY_API_KEY', default='your-bitpay-api-key-here')
 KAVEH_NEGAR_API_KEY = os.getenv('KAVEH_NEGAR_API_KEY', default='your-kaveh-negar-api-key-here')
 
-
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "unique-snowflake",   # نام دلخواه برای ناحیهٔ cache
-        "TIMEOUT": None,                  # اختیاری؛ None یعنی بدون انقضا
-    }
-}
-
-
-# Session Configuration
-SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-SESSION_CACHE_ALIAS = 'default'
-
-
+#gapgpt
 # ---- GapGPT / OpenAI compatible ----
 GAPGPT_BASE_URL = os.getenv('GAPGPT_BASE_URL', 'https://api.gapgpt.app/v1')
 GAPGPT_API_KEY  = os.getenv('GAPGPT_API_KEY') or os.getenv('OPENAI_API_KEY')
@@ -260,48 +285,78 @@ SUMMARY_MODEL_NAME  = os.getenv('SUMMARY_MODEL_NAME', 'o3-mini')      # یا 'gp
 RESPONSE_MAX_TOKENS = int(os.getenv('RESPONSE_MAX_TOKENS', '1500'))
 SUMMARY_MAX_TOKENS  = int(os.getenv('SUMMARY_MAX_TOKENS', '900'))
 
-# CrazyMiner Payment Settings
-PAYMENT_GATEWAY_URL = os.getenv('PAYMENT_GATEWAY_URL', 'https://api.medogram.ir')
-PAYMENT_API_KEY = os.getenv('PAYMENT_API_KEY', '')  # باید در محیط تنظیم شود
-PAYMENT_REDIRECT_URL = os.getenv('PAYMENT_REDIRECT_URL', 'https://medogram.ir/payment-redirect/')
 
-# SOAPify Integration Settings
-SOAPIFY_API_URL = os.getenv('SOAPIFY_API_URL', 'http://localhost:8000/api')
-SOAPIFY_API_KEY = os.getenv('SOAPIFY_API_KEY', '')
-SOAPIFY_USE_DIRECT_DB = os.getenv('SOAPIFY_USE_DIRECT_DB', 'True').lower() in ('true', '1', 'yes')
+# ================== Django Cache (Redis) ==================
+# از قبل تعریف شده‌اند:
+REDIS_HOST = "services.irn2.chabokan.net"
+REDIS_PORT = 15323
+REDIS_PASSWORD = "KLXfutAkhQdV1pxh"
 
-"""          # Unified Logging for payment, patient access, and Django
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
+# دیتابیس مخصوص کش (با Celery تداخل نداشته باشد)
+REDIS_DB_CACHE = 0
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_CACHE}",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "PASSWORD": REDIS_PASSWORD,
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 200,
+                "retry_on_timeout": True,
+            },
+            "SOCKET_CONNECT_TIMEOUT": 5,  # ثانیه
+            "SOCKET_TIMEOUT": 5,          # ثانیه
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': 'django_debug.log',
-        },
+        "TIMEOUT": 60 * 15,   # 15 دقیقه – بنا به نیاز تغییر بده
+        "KEY_PREFIX": "medogram",  # جلوگیری از تداخل کلیدها بین پروژه‌ها
+    }
+}
+
+# ================== Django Sessions via Redis Cache ==================
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
+
+# انتخابی اما پیشنهادی:
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # یک هفته
+SESSION_SAVE_EVERY_REQUEST = False
+
+# ================== Celery & Redis ==================
+
+# DB های جدا برای بروکر و ریزالت
+REDIS_DB_BROKER = 1
+REDIS_DB_RESULT = 2
+
+# URLها
+REDIS_URL_BROKER = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_BROKER}"
+REDIS_URL_RESULT = f"redis://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB_RESULT}"
+
+# سازگاری با برخی هاست‌ها/نسخه‌های قدیمی
+BROKER_URL = REDIS_URL_BROKER
+CELERY_RESULT_BACKEND = REDIS_URL_RESULT
+
+# تنظیمات استاندارد Celery - همه‌چیز روی UTC می‌ماند
+CELERY_BROKER_URL = REDIS_URL_BROKER
+CELERY_RESULT_BACKEND = REDIS_URL_RESULT
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ENABLE_UTC = True
+CELERY_TIMEZONE = 'UTC'  # همانند Django
+
+# معادل 22:00 تهران = 18:30 UTC
+CELERY_BEAT_SCHEDULE = {
+    'close-open-chat-sessions-22-tehran': {
+        'task': 'medogram_tasks.close_open_sessions_task',
+        'schedule': crontab(minute=30, hour=18),
+        'options': {'queue': 'default'},
+        'args': [12],  # --hours=12
     },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-        },
-        'django.db.backends': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-        },
-        'crazy_miner.payment': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'crazy_miner.patient_access': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
+    'summarize-chats-22-tehran': {
+        'task': 'medogram_tasks.summarize_all_users_chats_task',
+        'schedule': crontab(minute=30, hour=18),
+        'options': {'queue': 'default'},
+        'args': [None],  # limit=None
     },
 }
-"""
